@@ -12,7 +12,10 @@ using namespace glm;
 float			aspect;
 ViewManager		m_camera;
 
-MeshObject mesh;
+MeshObject* meshPtr;
+Shader shader;
+
+bool meshInited = false;
 
 namespace OpenMesh_EX {
 
@@ -209,7 +212,17 @@ private: System::Void hkoglPanelControl1_Paint(System::Object^  sender, System::
 	float scale = 0.1f;
 	shader.setUniformMatrix4fv("model", glm::scale(vec3(scale, scale, scale)));
 
-	glDrawArrays(GL_TRIANGLES, 0, 36);
+	// render twice
+	if (meshInited) {
+		// wireframe
+		shader.setUniform3fv("color", glm::vec3(0.0f, 0.0f, 0.0f));
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		meshPtr->Render(shader);
+		// fill
+		shader.setUniform3fv("color", glm::vec3(1.0f, 1.0f, 0.0f));
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+		meshPtr->Render(shader);
+	}
 }
 
 private: System::Void hkoglPanelControl1_Resize(System::Object^ sender, System::EventArgs^ e) {
@@ -263,7 +276,9 @@ private: System::Void openModelDialog_FileOk(System::Object^  sender, System::Co
 	MarshalString(openModelDialog->FileName, filename);
 
 	// do load model action
-
+	meshPtr = new MeshObject();
+	meshPtr->Init(filename);
+	meshInited = true;
 }
 private: System::Void saveModelToolStripMenuItem_Click(System::Object^  sender, System::EventArgs^  e)
 {
@@ -276,6 +291,8 @@ private: System::Void saveModelDialog_FileOk(System::Object^  sender, System::Co
 	MarshalString(saveModelDialog->FileName, filename);
 
 	// do save file action
+	
+
 }
 private: System::Void timer1_Tick(System::Object^ sender, System::EventArgs^ e) {
 	// need to called this, so the event from the of hkogl will get called too
