@@ -2,20 +2,60 @@
 
 #include "Common.h"
 #include "DotNetUtilities.h"
-#include "Mesh/GUA_OM.h"
-#include "Mesh/DP.h"
+#include "Shader.h"
+#include "ViewManager.h"
 
-Tri_Mesh *mesh;
+using namespace std;
+using namespace glm;
 
-xform xf;
-GLCamera camera;
-float fov = 0.7f;
+float			aspect;
+ViewManager		m_camera;
 
-static const Mouse::button physical_to_logical_map[] = {
-	Mouse::NONE, Mouse::ROTATE, Mouse::MOVEXY, Mouse::MOVEZ,
-	Mouse::MOVEZ, Mouse::MOVEXY, Mouse::MOVEXY, Mouse::MOVEXY,
+Shader shader;
+unsigned int VAO;
+float vertices[] = {
+		-0.5f, -0.5f, -0.5f,
+		 0.5f, -0.5f, -0.5f,
+		 0.5f,  0.5f, -0.5f,
+		 0.5f,  0.5f, -0.5f,
+		-0.5f,  0.5f, -0.5f,
+		-0.5f, -0.5f, -0.5f,
+
+		-0.5f, -0.5f,  0.5f,
+		 0.5f, -0.5f,  0.5f,
+		 0.5f,  0.5f,  0.5f,
+		 0.5f,  0.5f,  0.5f,
+		-0.5f,  0.5f,  0.5f,
+		-0.5f, -0.5f,  0.5f,
+
+		-0.5f,  0.5f,  0.5f,
+		-0.5f,  0.5f, -0.5f,
+		-0.5f, -0.5f, -0.5f,
+		-0.5f, -0.5f, -0.5f,
+		-0.5f, -0.5f,  0.5f,
+		-0.5f,  0.5f,  0.5f,
+
+		 0.5f,  0.5f,  0.5f,
+		 0.5f,  0.5f, -0.5f,
+		 0.5f, -0.5f, -0.5f,
+		 0.5f, -0.5f, -0.5f,
+		 0.5f, -0.5f,  0.5f,
+		 0.5f,  0.5f,  0.5f,
+
+		-0.5f, -0.5f, -0.5f,
+		 0.5f, -0.5f, -0.5f,
+		 0.5f, -0.5f,  0.5f,
+		 0.5f, -0.5f,  0.5f,
+		-0.5f, -0.5f,  0.5f,
+		-0.5f, -0.5f, -0.5f,
+
+		-0.5f,  0.5f, -0.5f,
+		 0.5f,  0.5f, -0.5f,
+		 0.5f,  0.5f,  0.5f,
+		 0.5f,  0.5f,  0.5f,
+		-0.5f,  0.5f,  0.5f,
+		-0.5f,  0.5f, -0.5f,
 };
-Mouse::button Mouse_State = Mouse::ROTATE;
 
 namespace OpenMesh_EX {
 
@@ -169,7 +209,32 @@ namespace OpenMesh_EX {
 #pragma endregion
 private: System::Void hkoglPanelControl1_Load(System::Object^  sender, System::EventArgs^  e)
 {
+	// glew init
+	GLenum res = glewInit();
+	if (res != GLEW_OK) {
+		fprintf(stderr, "Error: '%s'\n", glewGetErrorString(res));
+	}
+	// some default enable and disable settings
+	glClearColor(0, 0, 0, 1);
+	glEnable(GL_DEPTH_TEST);
+	glDisable(GL_CULL_FACE);
+	glDepthFunc(GL_LEQUAL);
 
+	// init shader and model
+	shader = Shader("../Assets/shaders/vertex.vs.glsl", "../Assets/shaders/fragment.fs.glsl");
+
+	glGenVertexArrays(1, &VAO);
+	glBindVertexArray(VAO);
+
+	unsigned int VBO;
+	glGenBuffers(1, &VBO);
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(0);
+
+	glBindVertexArray(0);
 }
 private: System::Void hkoglPanelControl1_Paint(System::Object^  sender, System::Windows::Forms::PaintEventArgs^  e)
 {
@@ -177,88 +242,19 @@ private: System::Void hkoglPanelControl1_Paint(System::Object^  sender, System::
 	glClearColor(1.0, 1.0, 1.0, 1.0);
 	glClear(GL_COLOR_BUFFER_BIT);
 
-	point center;
-	center[0] = 0.0;
-	center[1] = 0.0;
-	center[2] = 0.0;
-	camera.setupGL(xf * center, 1.0);
-
-	glPushMatrix();
-	glMatrixMode(GL_MODELVIEW);
-	glMultMatrixd((double *)xf);
-	if (mesh != NULL)
-		mesh->Render_SolidWireframe();
-	glPopMatrix();
+	
 }
 private: System::Void hkoglPanelControl1_MouseDown(System::Object^  sender, System::Windows::Forms::MouseEventArgs^  e)
 {
-	if (e->Button == System::Windows::Forms::MouseButtons::Left ||
-		e->Button == System::Windows::Forms::MouseButtons::Middle)
-	{
-		point center;
-		Mouse_State = Mouse::NONE;
-		center[0] = 0.0;
-		center[1] = 0.0;
-		center[2] = 0.0;
-		camera.mouse(e->X, e->Y, Mouse_State,
-			xf * center,
-			1.0, xf);
-	}
+	
 }
 private: System::Void hkoglPanelControl1_MouseMove(System::Object^  sender, System::Windows::Forms::MouseEventArgs^  e)
 {
-	if (e->Button == System::Windows::Forms::MouseButtons::Left)
-	{
-		point center;
-		Mouse_State = Mouse::ROTATE;
-		center[0] = 0.0;
-		center[1] = 0.0;
-		center[2] = 0.0;
-		camera.mouse(e->X, e->Y, Mouse_State,
-			xf * center,
-			1.0, xf);
-		hkoglPanelControl1->Invalidate();
-	}
-
-	if (e->Button == System::Windows::Forms::MouseButtons::Middle)
-	{
-		point center;
-		Mouse_State = Mouse::MOVEXY;
-		center[0] = 0.0;
-		center[1] = 0.0;
-		center[2] = 0.0;
-		camera.mouse(e->X, e->Y, Mouse_State,
-			xf * center,
-			1.0, xf);
-		hkoglPanelControl1->Invalidate();
-	}
+	
 }
 private: System::Void hkoglPanelControl1_MouseWheel(System::Object^  sender, System::Windows::Forms::MouseEventArgs^  e)
 {
-	if (e->Delta < 0)
-	{
-		point center;
-		Mouse_State = Mouse::WHEELDOWN;
-		center[0] = 0.0;
-		center[1] = 0.0;
-		center[2] = 0.0;
-		camera.mouse(e->X, e->Y, Mouse_State,
-			xf * center,
-			1.0, xf);
-		hkoglPanelControl1->Invalidate();
-	}
-	else
-	{
-		point center;
-		Mouse_State = Mouse::WHEELUP;
-		center[0] = 0.0;
-		center[1] = 0.0;
-		center[2] = 0.0;
-		camera.mouse(e->X, e->Y, Mouse_State,
-			xf * center,
-			1.0, xf);
-		hkoglPanelControl1->Invalidate();
-	}
+	
 }
 private: System::Void loadModelToolStripMenuItem_Click(System::Object^  sender, System::EventArgs^  e)
 {
@@ -271,13 +267,7 @@ private: System::Void openModelDialog_FileOk(System::Object^  sender, System::Co
 	std::string filename;
 	MarshalString(openModelDialog->FileName, filename);
 
-	if (mesh != NULL)
-		delete mesh;
-
-	mesh = new Tri_Mesh;
-
-	if (ReadFile(filename, mesh))
-		std::cout << filename << std::endl;
+	// do load model action
 
 	hkoglPanelControl1->Invalidate();
 }
@@ -291,8 +281,7 @@ private: System::Void saveModelDialog_FileOk(System::Object^  sender, System::Co
 	std::string filename;
 	MarshalString(saveModelDialog->FileName, filename);
 
-	if (SaveFile(filename, mesh))
-		std::cout << filename << std::endl;
+	// do save file action
 }
 };
 }

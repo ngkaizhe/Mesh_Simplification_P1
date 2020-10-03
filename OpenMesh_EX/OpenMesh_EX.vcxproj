@@ -92,6 +92,8 @@
     <ClCompile Include="Mesh\GLCamera.cc" />
     <ClCompile Include="Mesh\GUA_OM.cpp" />
     <ClCompile Include="MyForm.cpp" />
+    <ClCompile Include="Shader.cpp" />
+    <ClCompile Include="ViewManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Common.h" />
@@ -102,6 +104,8 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</ExcludedFromBuild>
     </ClInclude>
+    <ClInclude Include="Shader.h" />
+    <ClInclude Include="ViewManager.h" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="MyForm.resx">
