@@ -61,7 +61,7 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_USE_MATH_DEFINES;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>glu32.lib;opengl32.lib;OpenMeshCored.lib</AdditionalDependencies>
+      <AdditionalDependencies>freeglut.lib;opengl32.lib;glew32.lib;glu32.lib;OpenMeshCored.lib</AdditionalDependencies>
       <SubSystem>Console</SubSystem>
       <EntryPointSymbol>main</EntryPointSymbol>
     </Link>
@@ -94,6 +94,7 @@
     <ClCompile Include="MyForm.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Common.h" />
     <ClInclude Include="DotNetUtilities.h" />
     <ClInclude Include="Mesh\GUA_OM.h" />
     <ClInclude Include="MyForm.h">
