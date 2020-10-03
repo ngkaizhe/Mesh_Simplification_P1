@@ -59,4 +59,12 @@
       <Filter>資源檔</Filter>
     </EmbeddedResource>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\Assets\shaders\fragment.fs.glsl">
+      <Filter>資源檔</Filter>
+    </None>
+    <None Include="..\Assets\shaders\vertex.vs.glsl">
+      <Filter>資源檔</Filter>
+    </None>
+  </ItemGroup>
 </Project>

@@ -99,13 +99,15 @@ namespace OpenMesh_EX {
 	private: System::Windows::Forms::SaveFileDialog^  saveModelDialog;
 	private: System::Windows::Forms::ToolStripMenuItem^  saveModelToolStripMenuItem;
 	private: HKOGLPanel::HKOGLPanelControl^  hkoglPanelControl1;
+	private: System::Windows::Forms::Timer^ timer1;
+	private: System::ComponentModel::IContainer^ components;
 	protected:
 
 	private:
 		/// <summary>
 		/// 設計工具所需的變數。
 		/// </summary>
-		System::ComponentModel::Container ^components;
+
 
 #pragma region Windows Form Designer generated code
 		/// <summary>
@@ -114,8 +116,9 @@ namespace OpenMesh_EX {
 		/// </summary>
 		void InitializeComponent(void)
 		{
-			HKOGLPanel::HKCOGLPanelCameraSetting^  hkcoglPanelCameraSetting1 = (gcnew HKOGLPanel::HKCOGLPanelCameraSetting());
-			HKOGLPanel::HKCOGLPanelPixelFormat^  hkcoglPanelPixelFormat1 = (gcnew HKOGLPanel::HKCOGLPanelPixelFormat());
+			this->components = (gcnew System::ComponentModel::Container());
+			HKOGLPanel::HKCOGLPanelCameraSetting^ hkcoglPanelCameraSetting1 = (gcnew HKOGLPanel::HKCOGLPanelCameraSetting());
+			HKOGLPanel::HKCOGLPanelPixelFormat^ hkcoglPanelPixelFormat1 = (gcnew HKOGLPanel::HKCOGLPanelPixelFormat());
 			this->menuStrip1 = (gcnew System::Windows::Forms::MenuStrip());
 			this->fileToolStripMenuItem = (gcnew System::Windows::Forms::ToolStripMenuItem());
 			this->loadModelToolStripMenuItem = (gcnew System::Windows::Forms::ToolStripMenuItem());
@@ -123,6 +126,7 @@ namespace OpenMesh_EX {
 			this->openModelDialog = (gcnew System::Windows::Forms::OpenFileDialog());
 			this->saveModelDialog = (gcnew System::Windows::Forms::SaveFileDialog());
 			this->hkoglPanelControl1 = (gcnew HKOGLPanel::HKOGLPanelControl());
+			this->timer1 = (gcnew System::Windows::Forms::Timer(this->components));
 			this->menuStrip1->SuspendLayout();
 			this->SuspendLayout();
 			// 
@@ -142,20 +146,20 @@ namespace OpenMesh_EX {
 					this->saveModelToolStripMenuItem
 			});
 			this->fileToolStripMenuItem->Name = L"fileToolStripMenuItem";
-			this->fileToolStripMenuItem->Size = System::Drawing::Size(38, 20);
+			this->fileToolStripMenuItem->Size = System::Drawing::Size(37, 20);
 			this->fileToolStripMenuItem->Text = L"File";
 			// 
 			// loadModelToolStripMenuItem
 			// 
 			this->loadModelToolStripMenuItem->Name = L"loadModelToolStripMenuItem";
-			this->loadModelToolStripMenuItem->Size = System::Drawing::Size(144, 22);
+			this->loadModelToolStripMenuItem->Size = System::Drawing::Size(137, 22);
 			this->loadModelToolStripMenuItem->Text = L"Load Model";
 			this->loadModelToolStripMenuItem->Click += gcnew System::EventHandler(this, &MyForm::loadModelToolStripMenuItem_Click);
 			// 
 			// saveModelToolStripMenuItem
 			// 
 			this->saveModelToolStripMenuItem->Name = L"saveModelToolStripMenuItem";
-			this->saveModelToolStripMenuItem->Size = System::Drawing::Size(144, 22);
+			this->saveModelToolStripMenuItem->Size = System::Drawing::Size(137, 22);
 			this->saveModelToolStripMenuItem->Text = L"Save Model";
 			this->saveModelToolStripMenuItem->Click += gcnew System::EventHandler(this, &MyForm::saveModelToolStripMenuItem_Click);
 			// 
@@ -186,9 +190,18 @@ namespace OpenMesh_EX {
 			this->hkoglPanelControl1->TabIndex = 2;
 			this->hkoglPanelControl1->Load += gcnew System::EventHandler(this, &MyForm::hkoglPanelControl1_Load);
 			this->hkoglPanelControl1->Paint += gcnew System::Windows::Forms::PaintEventHandler(this, &MyForm::hkoglPanelControl1_Paint);
+			this->hkoglPanelControl1->KeyPress += gcnew System::Windows::Forms::KeyPressEventHandler(this, &MyForm::hkoglPanelControl1_KeyPress);
 			this->hkoglPanelControl1->MouseDown += gcnew System::Windows::Forms::MouseEventHandler(this, &MyForm::hkoglPanelControl1_MouseDown);
 			this->hkoglPanelControl1->MouseMove += gcnew System::Windows::Forms::MouseEventHandler(this, &MyForm::hkoglPanelControl1_MouseMove);
+			this->hkoglPanelControl1->MouseUp += gcnew System::Windows::Forms::MouseEventHandler(this, &MyForm::hkoglPanelControl1_MouseUp);
 			this->hkoglPanelControl1->MouseWheel += gcnew System::Windows::Forms::MouseEventHandler(this, &MyForm::hkoglPanelControl1_MouseWheel);
+			this->hkoglPanelControl1->Resize += gcnew System::EventHandler(this, &MyForm::hkoglPanelControl1_Resize);
+			// 
+			// timer1
+			// 
+			this->timer1->Enabled = true;
+			this->timer1->Interval = 10;
+			this->timer1->Tick += gcnew System::EventHandler(this, &MyForm::timer1_Tick);
 			// 
 			// MyForm
 			// 
@@ -239,22 +252,61 @@ private: System::Void hkoglPanelControl1_Load(System::Object^  sender, System::E
 private: System::Void hkoglPanelControl1_Paint(System::Object^  sender, System::Windows::Forms::PaintEventArgs^  e)
 {
 	glEnable(GL_COLOR_MATERIAL);
-	glClearColor(1.0, 1.0, 1.0, 1.0);
+	glClearColor(0.5f, 0.5f, 1.0f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT);
 
-	
+	glBindVertexArray(VAO);
+	shader.use();
+	// set view matrix
+	shader.setUniformMatrix4fv("view", m_camera.GetViewMatrix() * m_camera.GetModelMatrix());
+	// set projection matrix
+	shader.setUniformMatrix4fv("projection", m_camera.GetProjectionMatrix(aspect));
+	// do something here
+	// set model matrix
+	float scale = 0.1f;
+	shader.setUniformMatrix4fv("model", glm::scale(vec3(scale, scale, scale)));
+
+	glDrawArrays(GL_TRIANGLES, 0, 36);
+}
+
+private: System::Void hkoglPanelControl1_Resize(System::Object^ sender, System::EventArgs^ e) {
+	float width = (float)hkoglPanelControl1->Size.Width;
+	float height = (float)hkoglPanelControl1->Size.Height;
+	aspect = width * 1.0f / height;
+	m_camera.SetWindowSize(width, height);
+}
+private: System::Void hkoglPanelControl1_KeyPress(System::Object^ sender, System::Windows::Forms::KeyPressEventArgs^ e) {
+	m_camera.keyEvents((unsigned char)e->KeyChar);
+	printf("Key %c is pressed\n", e->KeyChar);
 }
 private: System::Void hkoglPanelControl1_MouseDown(System::Object^  sender, System::Windows::Forms::MouseEventArgs^  e)
 {
-	
+	if (e->Button == System::Windows::Forms::MouseButtons::Left) {
+		m_camera.mousePressEvent(GLUT_LEFT_BUTTON, e->Location.X, e->Location.Y);
+		printf("Mouse %d is pressed at (%d, %d)\n", GLUT_LEFT_BUTTON, e->Location.X, e->Location.Y);
+	}
+	else if (e->Button == System::Windows::Forms::MouseButtons::Middle) {
+		m_camera.mousePressEvent(GLUT_MIDDLE_BUTTON, e->Location.X, e->Location.Y);
+		printf("Mouse %d is pressed at (%d, %d)\n", GLUT_MIDDLE_BUTTON, e->Location.X, e->Location.Y);
+	}
+}
+private: System::Void hkoglPanelControl1_MouseUp(System::Object^ sender, System::Windows::Forms::MouseEventArgs^ e) {
+	if (e->Button == System::Windows::Forms::MouseButtons::Left) {
+		m_camera.mouseReleaseEvent(GLUT_LEFT_BUTTON, e->Location.X, e->Location.Y);
+		printf("Mouse %d is released at (%d, %d)\n", GLUT_LEFT_BUTTON, e->Location.X, e->Location.Y);
+	}
+	else if (e->Button == System::Windows::Forms::MouseButtons::Middle) {
+		m_camera.mouseReleaseEvent(GLUT_MIDDLE_BUTTON, e->Location.X, e->Location.Y);
+		printf("Mouse %d is released at (%d, %d)\n", GLUT_MIDDLE_BUTTON, e->Location.X, e->Location.Y);
+	}
 }
 private: System::Void hkoglPanelControl1_MouseMove(System::Object^  sender, System::Windows::Forms::MouseEventArgs^  e)
 {
-	
+	m_camera.mouseMoveEvent(e->Location.X, e->Location.Y);
 }
 private: System::Void hkoglPanelControl1_MouseWheel(System::Object^  sender, System::Windows::Forms::MouseEventArgs^  e)
 {
-	
+	m_camera.wheelEvent(-e->Delta);
 }
 private: System::Void loadModelToolStripMenuItem_Click(System::Object^  sender, System::EventArgs^  e)
 {
@@ -269,7 +321,6 @@ private: System::Void openModelDialog_FileOk(System::Object^  sender, System::Co
 
 	// do load model action
 
-	hkoglPanelControl1->Invalidate();
 }
 private: System::Void saveModelToolStripMenuItem_Click(System::Object^  sender, System::EventArgs^  e)
 {
@@ -282,6 +333,10 @@ private: System::Void saveModelDialog_FileOk(System::Object^  sender, System::Co
 	MarshalString(saveModelDialog->FileName, filename);
 
 	// do save file action
+}
+private: System::Void timer1_Tick(System::Object^ sender, System::EventArgs^ e) {
+	// need to called this, so the event from the of hkogl will get called too
+	hkoglPanelControl1->Invalidate();
 }
 };
 }
