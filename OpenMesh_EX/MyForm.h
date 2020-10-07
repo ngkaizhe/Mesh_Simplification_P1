@@ -297,6 +297,7 @@ private: System::Void saveModelDialog_FileOk(System::Object^  sender, System::Co
 private: System::Void timer1_Tick(System::Object^ sender, System::EventArgs^ e) {
 	// need to called this, so the event from the of hkogl will get called too
 	hkoglPanelControl1->Invalidate();
+
 }
 };
 }

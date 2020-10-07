@@ -50,6 +50,7 @@ public:
 	bool Init(std::string fileName);
 	void Render(Shader shader);
 
+	// decrease the vertex number 
 
 private:
 	GLMesh model;
