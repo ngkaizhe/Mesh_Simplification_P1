@@ -467,6 +467,9 @@ private: System::Void hkoglPanelControl1_Resize(System::Object^ sender, System::
 private: System::Void hkoglPanelControl1_KeyPress(System::Object^ sender, System::Windows::Forms::KeyPressEventArgs^ e) {
 	m_camera.keyEvents((unsigned char)e->KeyChar);
 	printf("Key %c is pressed\n", e->KeyChar);
+
+	// debug part
+
 }
 private: System::Void hkoglPanelControl1_MouseDown(System::Object^  sender, System::Windows::Forms::MouseEventArgs^  e)
 {

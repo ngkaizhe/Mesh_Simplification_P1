@@ -9,6 +9,14 @@
 #include <algorithm>
 #include<Eigen/Sparse>
 #include "Shader.h"
+#include <vector>
+
+enum class SimplificationMode {
+	V1,
+	V2,
+	Middle,
+	SmallestError,
+};
 
 typedef OpenMesh::TriMesh_ArrayKernelT<>  TriMesh;
 
@@ -44,6 +52,11 @@ private:
 class MeshObject
 {
 public:
+	struct VertexCost {
+		double cost;
+		OpenMesh::VertexHandle* vhPtr;
+	};
+
 	MeshObject();
 	~MeshObject();
 
@@ -54,10 +67,18 @@ public:
 	int GetEdgesNumber();
 	int GetFacesNumber();
 
-
-	// decrease the vertex number 
+	// decrease the vertex number
+	void SimplifyMesh(SimplificationMode mode);
 
 private:
+	// some added properties
+	OpenMesh::VPropHandleT<std::vector<VertexCost>> validVertices;
+	OpenMesh::VPropHandleT<glm::mat4> quadricMat;
+
 	GLMesh model;
+
+	// helper function
+	// get error quadratic matrix
+	glm::mat4 GetErrorQuadricMatrix(OpenMesh::VertexHandle vh);
 };
 

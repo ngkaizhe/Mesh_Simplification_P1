@@ -14,6 +14,7 @@ extern int faceSize;
 
 MyMesh::MyMesh()
 {
+	request_face_normals();
 	request_vertex_normals();
 	request_vertex_status();
 	request_face_status();
@@ -143,6 +144,9 @@ void GLMesh::LoadToShader()
 
 MeshObject::MeshObject()
 {
+	// add properties
+	model.mesh.add_property(this->validVertices);
+	model.mesh.add_property(this->quadricMat);
 }
 
 MeshObject::~MeshObject()
@@ -151,8 +155,45 @@ MeshObject::~MeshObject()
 
 bool MeshObject::Init(std::string fileName)
 {
-
 	bool retV = model.Init(fileName);
+
+	// initial the error quadric matrix
+	for (MyMesh::VertexIter v_it = model.mesh.vertices_begin(); v_it != model.mesh.vertices_end(); v_it++) {
+		model.mesh.property(this->quadricMat, *v_it) = GetErrorQuadricMatrix(*v_it);
+	}
+
+	// initial vPairs and its cost
+	for (MyMesh::VertexIter v_it = model.mesh.vertices_begin(); v_it != model.mesh.vertices_end(); v_it++) {
+		// the valid vertices array to be binded to the property
+		std::vector<VertexCost> vertexCosts;
+
+		// get the current vertex information
+		MyMesh::Point vPF = model.mesh.point(*v_it);
+		glm::vec4 v = glm::vec4(vPF[0], vPF[1], vPF[2], 1);
+		// find the valid pairs by considering the (v1, v2) which is an edge
+		for (MyMesh::VVIter vv_it = model.mesh.vv_begin(*v_it); vv_it.is_valid(); vv_it++) {
+			VertexCost vertexCost;
+			vertexCost.vhPtr = &(*vv_it);
+			glm::mat4 Q = model.mesh.property(this->quadricMat, *v_it);
+
+			// Cost/error value = (v(T) * M * v)
+			// as glm doesn't provide vector * matrix from the left
+			// so v(T) * M = (M(T) * v)(T) --> 1X4 vector
+			// 1X4 vector * 4X1 vector = dot product
+			vertexCost.cost = glm::dot(glm::transpose(Q) * v, v);
+
+			// save to the array
+			vertexCosts.push_back(vertexCost);
+		}
+
+		// sort the vertex cost array
+		// the minimum will be the front
+		std::sort(vertexCosts.begin(), vertexCosts.end(), 
+			[](VertexCost vc1, VertexCost vc2) {
+				return vc1.cost < vc2.cost;
+			}
+		);
+	}
 
 	return retV;
 }
@@ -176,4 +217,38 @@ int MeshObject::GetEdgesNumber() {
 
 int MeshObject::GetFacesNumber() {
 	return model.mesh.n_faces();
+}
+
+void MeshObject::SimplifyMesh(SimplificationMode mode)
+{
+	
+}
+
+glm::mat4 MeshObject::GetErrorQuadricMatrix(OpenMesh::VertexHandle vh)
+{
+	// the summation fundamental error quadric
+	glm::mat4 Kps = glm::mat4(0.0);
+	for (MyMesh::VFIter vf_it = model.mesh.vf_begin(vh); vf_it != model.mesh.vf_end(vh); vf_it++) {
+		// we need the plane equation of the face, 
+		// get the plane normal
+		// get the normal of face in the point form
+		MyMesh::Point nPF = model.mesh.normal(*vf_it);
+		// convert the normal into glm form and normalized it
+		glm::vec3 n = glm::vec3(nPF[0], nPF[1], nPF[2]);
+		// n = <a, b, c> which a^2 + b^2 + c^2 = 1
+		n = glm::normalize(n);
+
+		// get the point which is on the plane
+		// point = (x0, y0, z0)
+		MyMesh::Point vPF = model.mesh.point(vh);
+		// plane equation -> ax + by + cz - (ax0 + by0 + cz0) = 0
+		glm::vec4 p = glm::vec4(n[0], n[1], n[2], -(n[0] * vPF[0] + n[1] * vPF[1] + n[2] * vPF[2]));
+
+		// get the fundamental error quadric
+		glm::mat4 Kp = glm::outerProduct(p, p);
+		Kps += Kp;
+	}
+
+	// return the error quadric
+	return Kps;
 }
