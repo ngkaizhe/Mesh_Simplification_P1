@@ -50,6 +50,11 @@ public:
 	bool Init(std::string fileName);
 	void Render(Shader shader);
 
+	int GetVerticesNumber();
+	int GetEdgesNumber();
+	int GetFacesNumber();
+
+
 	// decrease the vertex number 
 
 private:

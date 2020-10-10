@@ -79,7 +79,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <Reference Include="HKOGLPanel">
-      <HintPath>..\HKOGLPanel.dll</HintPath>
+      <HintPath>..\Debug\HKOGLPanel.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />
