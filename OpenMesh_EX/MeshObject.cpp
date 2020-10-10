@@ -165,3 +165,15 @@ void MeshObject::Render(Shader shader)
 	glDrawElements(GL_TRIANGLES, model.mesh.n_faces() * 3, GL_UNSIGNED_INT, 0);
 	glBindVertexArray(0);
 }
+
+int MeshObject::GetVerticesNumber() {
+	return model.mesh.n_vertices();
+}
+
+int MeshObject::GetEdgesNumber() {
+	return model.mesh.n_edges();
+}
+
+int MeshObject::GetFacesNumber() {
+	return model.mesh.n_faces();
+}
