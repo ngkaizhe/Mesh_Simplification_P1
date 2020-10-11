@@ -80,5 +80,11 @@ private:
 	// helper function
 	// get error quadratic matrix
 	glm::mat4 GetErrorQuadricMatrix(OpenMesh::VertexHandle vh);
+	// calculate the cost of vPair for the vertex handle
+	void RecalculateCost(OpenMesh::VertexHandle vh);
+	// check whether the vertex pair is an concave edge
+	bool CheckConcave(OpenMesh::VertexHandle baseVH, OpenMesh::VertexHandle sideVH);
+	// get the cost of sideVH and baseVH
+	double GetCost(OpenMesh::VertexHandle baseVH, OpenMesh::VertexHandle sideVH);
 };
 
