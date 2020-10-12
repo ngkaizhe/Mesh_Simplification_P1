@@ -216,7 +216,7 @@ int MeshObject::GetEdgesNumber() {
 }
 
 int MeshObject::GetFacesNumber() {
-	return model.mesh.n_faces();
+return model.mesh.n_faces();
 }
 
 void MeshObject::SimplifyMesh(SimplificationMode mode)
@@ -231,7 +231,7 @@ void MeshObject::SimplifyMesh(SimplificationMode mode)
 		// start to choose the sideVH
 		for (int i = 0; i < validVertices.size();) {
 			sideVH = *(validVertices[i].vhPtr);
-			
+
 			// if the current chosen sideVH is not deleted
 			if (sideVH.is_valid()) {
 				// Check whether the edge whether is concave or not
@@ -252,7 +252,7 @@ void MeshObject::SimplifyMesh(SimplificationMode mode)
 			// we will change the value of baseVH
 			glm::vec4 newV;
 			glm::mat4 newQ = model.mesh.property(this->quadricMat, baseVH) + model.mesh.property(this->quadricMat, sideVH);
-			
+
 			// choose the different mode
 			if (mode == SimplificationMode::SmallestError) {
 				// set the differential matrix
@@ -287,11 +287,62 @@ void MeshObject::SimplifyMesh(SimplificationMode mode)
 				newV = glm::vec4(p1[0], p1[1], p1[2], 1);
 			}
 
-			// pop off the sideVH from the baseVH's validVertices
+			// till now we have a newV and newQ
+			// assign the new value to baseVH
+			model.mesh.property(this->quadricMat, baseVH) = newQ;
+			model.mesh.set_point(baseVH, MyMesh::Point(newV[0], newV[1], newV[2]));
+
+			// the processes below is to collapse the sideVH
+			// pop off the sideVH from the baseVH's validVertices or
 			// inform all vertices inside the baseVH's validVertices to update its cost value
+			std::vector<VertexCost> baseVHValidVertices = model.mesh.property(this->validVertices, baseVH);
+			for (int i = 0; i < baseVHValidVertices.size(); i++) {
+				// pop off the sideVH from the baseVH's validVertices
+				if (*(baseVHValidVertices[i].vhPtr) == sideVH) {
+					baseVHValidVertices.erase(baseVHValidVertices.begin() + i);
+				}
+
+				// inform all vertices inside the baseVH's validVertices to update its cost value
+				else {
+					this->RecalculateCost(*(baseVHValidVertices[i].vhPtr), baseVH);
+					i++;
+				}
+			}
+			model.mesh.property(this->validVertices, baseVH) = baseVHValidVertices;
+
 			// inform all vertices inside the sideVH's validVertices to update its vhPtr and cost value
+			std::vector<VertexCost> sideVHValidVertices = model.mesh.property(this->validVertices, sideVH);
+			for (int i = 0; i < sideVHValidVertices.size(); i++) {
+				MyMesh::VertexHandle sideVHVH = *(sideVHValidVertices[i].vhPtr);
+				std::vector<VertexCost> sideVHVHValidVertices = model.mesh.property(this->validVertices, sideVHVH);
+
+				// go through the vertex cost inside sideVHVH
+				for (int i = 0; i < sideVHVHValidVertices.size(); i++) {
+					if (*(sideVHVHValidVertices[i].vhPtr) == sideVH){
+						// update its vhPtr
+						sideVHVHValidVertices[i].vhPtr = &baseVH;
+						// update its cost value
+						this->RecalculateCost(sideVHVH, baseVH);
+						break;
+					}		
+				}
+
+				// assign back the vector
+				model.mesh.property(this->validVertices, sideVHVH) = sideVHVHValidVertices;
+			}
+
 			// merge the sideVH's validVertices to baseVH's validVertices
-			// update the validVertices' cost value
+			std::vector<VertexCost> newValidVertices;
+			newValidVertices.reserve(baseVHValidVertices.size() + sideVHValidVertices.size());
+			newValidVertices.insert(newValidVertices.end(), baseVHValidVertices.begin(), baseVHValidVertices.end());
+			newValidVertices.insert(newValidVertices.end(), sideVHValidVertices.begin(), sideVHValidVertices.end());
+			model.mesh.property(this->validVertices, baseVH) = newValidVertices;
+
+			// update the baseVH's validVertices' cost value
+			RecalculateCost(baseVH);
+
+			// remove the sideVH from the mesh
+			model.mesh.delete_vertex(sideVH, false);
 		}
 	}
 }
@@ -326,33 +377,54 @@ glm::mat4 MeshObject::GetErrorQuadricMatrix(OpenMesh::VertexHandle vh)
 }
 
 // recalculate all valid vertices cost of the current vertex handle
-void MeshObject::RecalculateCost(OpenMesh::VertexHandle vh)
+// or recalculate the current vh cost of the valid vertices of the vertex handle
+void MeshObject::RecalculateCost(OpenMesh::VertexHandle parentVH, OpenMesh::VertexHandle childVH)
 {
 	// the valid vertices array to be binded to the property
-	std::vector<VertexCost> vertexCosts = model.mesh.property(this->validVertices, vh);
+	std::vector<VertexCost> vertexCosts = model.mesh.property(this->validVertices, parentVH);
 
 	// get the current vertex information
-	MyMesh::Point vPF = model.mesh.point(vh);
+	MyMesh::Point vPF = model.mesh.point(parentVH);
 	glm::vec4 v = glm::vec4(vPF[0], vPF[1], vPF[2], 1);
+	glm::mat4 Q = model.mesh.property(this->quadricMat, parentVH);
 
-	// recalculate all cost from the vertexCosts
-	for (int i = 0; i < vertexCosts.size(); i++) {
-		glm::mat4 Q = model.mesh.property(this->quadricMat, vh);
-
-		// Cost/error value = (v(T) * M * v)
-		// as glm doesn't provide vector * matrix from the left
-		// so v(T) * M = (M(T) * v)(T) --> 1X4 vector
-		// 1X4 vector * 4X1 vector = dot product
-		vertexCosts[i].cost = glm::dot(glm::transpose(Q) * v, v);
+	// 2 conditions: either we recalculate all vertex handle, or we only calculate specific vertex handle
+	// recalculate all vertex handle
+	if (!childVH.is_valid()) {
+		// recalculate all cost from the vertexCosts
+		for (int i = 0; i < vertexCosts.size(); i++) {
+			// Cost/error value = (v(T) * M * v)
+			// as glm doesn't provide vector * matrix from the left
+			// so v(T) * M = (M(T) * v)(T) --> 1X4 vector
+			// 1X4 vector * 4X1 vector = dot product
+			vertexCosts[i].cost = glm::dot(glm::transpose(Q) * v, v);
+		}
+	} 
+	// only calculate specific vertex handle
+	else {
+		for (int i = 0; i < vertexCosts.size(); i++) {
+			if (childVH == *vertexCosts[i].vhPtr) {
+				// Cost/error value = (v(T) * M * v)
+				// as glm doesn't provide vector * matrix from the left
+				// so v(T) * M = (M(T) * v)(T) --> 1X4 vector
+				// 1X4 vector * 4X1 vector = dot product
+				vertexCosts[i].cost = glm::dot(glm::transpose(Q) * v, v);
+				break;
+			}
+			
+		}
 	}
 
 	// sort the vertex cost array
 	// the minimum will be the front
 	std::sort(vertexCosts.begin(), vertexCosts.end(),
 		[](VertexCost vc1, VertexCost vc2) {
-		return vc1.cost < vc2.cost;
-	}
+			return vc1.cost < vc2.cost;
+		}
 	);
+
+	// assigned back the vertexCost to parentVH
+	model.mesh.property(this->validVertices, parentVH) = vertexCosts;
 }
 
 bool MeshObject::CheckConcave(OpenMesh::VertexHandle baseVH, OpenMesh::VertexHandle sideVH)
