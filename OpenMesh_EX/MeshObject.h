@@ -6,6 +6,7 @@
 #include <OpenMesh/Core/Mesh/TriMesh_ArrayKernelT.hh>
 #include <Eigen/Sparse>
 #include <map>
+#include <vector>
 #include <algorithm>
 #include<Eigen/Sparse>
 #include "Shader.h"
@@ -34,11 +35,12 @@ public:
 	GLuint vao;
 	GLuint ebo;
 	GLuint vboVertices, vboNormal;
+	void LoadToShader();
 
 private:
 
 	bool LoadModel(std::string fileName);
-	void LoadToShader();
+	//void LoadToShader();
 };
 
 class MeshObject
@@ -55,6 +57,8 @@ public:
 	int GetFacesNumber();
 
 
+	/*  Skeleton Extraction*/
+	void Parameterization();
 	// decrease the vertex number 
 
 private:

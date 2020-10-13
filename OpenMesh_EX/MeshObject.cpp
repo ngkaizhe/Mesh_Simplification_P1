@@ -56,6 +56,7 @@ bool GLMesh::Init(std::string fileName)
 {
 	if (LoadModel(fileName))
 	{
+		std::cout << "Load Model\n";
 		LoadToShader();
 		return true;
 	}
@@ -81,7 +82,6 @@ bool GLMesh::LoadModel(std::string fileName)
 			mesh.update_normals();
 			mesh.release_face_normals();
 		}
-
 		return true;
 	}
 
@@ -151,9 +151,7 @@ MeshObject::~MeshObject()
 
 bool MeshObject::Init(std::string fileName)
 {
-
 	bool retV = model.Init(fileName);
-
 	return retV;
 }
 
@@ -176,4 +174,172 @@ int MeshObject::GetEdgesNumber() {
 
 int MeshObject::GetFacesNumber() {
 	return model.mesh.n_faces();
+}
+
+void MeshObject::Parameterization()
+{
+	std::cout << "Parameterization" << std::endl;
+
+	OpenMesh::HPropHandleT<double> weight;
+	OpenMesh::VPropHandleT<int> matrixIndex;
+
+	MyMesh mesh = model.mesh;
+
+	mesh.add_property(weight, "halfedgeWeight");
+	mesh.add_property(matrixIndex, "row");
+	//mesh.request_vertex_texcoords2D();
+	std::cout << "Start calculate weight!" << std::endl;
+
+	//calculate weight
+	MyMesh::HalfedgeHandle heh;
+	for (MyMesh::EdgeIter e_it = mesh.edges_begin(); e_it != mesh.edges_end(); ++e_it)
+	{
+		if (!mesh.is_boundary(*e_it))
+		{
+			GLdouble angle1, angle2, w;
+			MyMesh::HalfedgeHandle _heh = mesh.halfedge_handle(*e_it, 0);
+			MyMesh::Point pfrom = mesh.point(mesh.from_vertex_handle(_heh));
+			MyMesh::Point pto = mesh.point(mesh.to_vertex_handle(_heh));
+			MyMesh::Point po = mesh.point(mesh.opposite_vh(_heh));
+			MyMesh::Point poo = mesh.point(mesh.opposite_he_opposite_vh(_heh));
+
+			// weight cot(po -> form , po -> to) + cot(poo -> from, poo -> to)
+			OpenMesh::Vec3d v1 = (OpenMesh::Vec3d)(po - pfrom);
+			v1.normalize();
+			OpenMesh::Vec3d v2 = (OpenMesh::Vec3d)(po - pto);
+			v2.normalize();
+
+			angle1 = std::acos(OpenMesh::dot(v1, v2));
+
+			v1 = (OpenMesh::Vec3d)(poo - pfrom);
+			v1.normalize();
+			v2 = (OpenMesh::Vec3d)(poo - pto);
+			v2.normalize();
+
+			angle2 = std::acos(OpenMesh::dot(v1, v2));
+
+			w = (1.0 / std::tan(angle1)) + (1.0 / std::tan(angle2));
+
+			mesh.property(weight, _heh) = w;
+			mesh.property(weight, mesh.opposite_halfedge_handle(_heh)) = w;
+		}
+		else
+		{	
+			//find select mesh boundary 
+			if (!heh.is_valid())
+			{
+				heh = mesh.halfedge_handle(*e_it, 1);
+			}
+		}
+	}
+	std::cout << "Calculate weight finish!\n" << std::endl;
+
+	std::cout << "Start calculate matrix size!" << std::endl;
+
+	// calculate matrix size
+	int count = 0;
+	for (MyMesh::VertexIter v_it = mesh.vertices_begin(); v_it != mesh.vertices_end(); ++v_it)
+	{
+		//mesh.property(matrixIndex, *v_it) = count++;
+		if (mesh.is_boundary(*v_it))
+		{
+			mesh.property(matrixIndex, *v_it) = -1;
+		}
+		else
+		{
+			mesh.property(matrixIndex, *v_it) = count++;
+		}
+	}
+	std::cout << "Matrix size is " << count << std::endl;
+	std::cout << "Calculate matrix size finish!\n" << std::endl;
+
+	std::cout << "Start fill matrix!" << std::endl;
+
+	Eigen::SparseMatrix<double> A(count, count);
+	Eigen::VectorXd BX(count);
+	Eigen::VectorXd BY(count);
+	Eigen::VectorXd BZ(count);
+	Eigen::SimplicialLDLT<Eigen::SparseMatrix<double> > linearSolver;
+
+	BX.setZero();
+	BY.setZero();
+	BZ.setZero();
+
+	// fiil matrix
+	for (MyMesh::VertexIter v_it = mesh.vertices_begin(); v_it != mesh.vertices_end(); ++v_it)
+	{
+		if (!mesh.is_boundary(*v_it))
+		{
+			int i = mesh.property(matrixIndex, *v_it);
+			double totalWeight = 0;
+			MyMesh::Point p = mesh.point(*v_it);
+			BX[i] = p[0];
+			BY[i] = p[1];
+			BZ[i] = p[2];
+
+			for (MyMesh::VertexVertexIter vv_it = mesh.vv_iter(*v_it); vv_it.is_valid(); ++vv_it)
+			{
+				MyMesh::HalfedgeHandle _heh = mesh.find_halfedge(*v_it, *vv_it);
+				double w = mesh.property(weight, _heh);
+				totalWeight += w;
+			}
+			A.insert(i, i) = 1;
+			for (MyMesh::VertexVertexIter vv_it = mesh.vv_iter(*v_it); vv_it.is_valid(); ++vv_it)
+			{
+				MyMesh::HalfedgeHandle _heh = mesh.find_halfedge(*v_it, *vv_it);
+				double w = mesh.property(weight, _heh);
+
+				if (mesh.is_boundary(*vv_it))
+				{
+					//
+				}
+				else
+				{
+					int j = mesh.property(matrixIndex, *vv_it);
+					A.insert(i, j) = -w / totalWeight;
+				}
+			}
+		}
+	}
+
+	A.makeCompressed();
+	std::cout << "Fill matrix finish!\n" << std::endl;
+
+	std::cout << "Start solve linear system!" << std::endl;
+
+	// solve linear system
+	linearSolver.compute(A);
+
+	Eigen::VectorXd X = linearSolver.solve(BX);
+	Eigen::VectorXd Y = linearSolver.solve(BY);
+	Eigen::VectorXd Z = linearSolver.solve(BZ);
+	std::cout << "Solve linear system finish!\n" << std::endl;
+
+	// set texcoord
+	for (MyMesh::VertexIter v_it = mesh.vertices_begin(); v_it != mesh.vertices_end(); ++v_it)
+	{
+		if (!mesh.is_boundary(*v_it))
+		{
+			int i = mesh.property(matrixIndex, *v_it);
+			mesh.set_point(*v_it, MyMesh::Point(X[i], Y[i], Z[i]));
+		}
+	}
+
+	//model.mesh.request_vertex_texcoords2D();
+	for (MyMesh::VertexIter v_it = model.mesh.vertices_begin(); v_it != model.mesh.vertices_end(); ++v_it)
+	{
+		int i = mesh.property(matrixIndex, *v_it);
+		if (i >= count || i < 0) {
+			std::cout << "Index out of range!! " << i << std::endl;
+			continue;
+		}
+			
+		//model.mesh.set_texcoord2D(*v_it, MyMesh::TexCoord2D(-1, -1));
+		//MyMesh::Point oriP = model.mesh.point(*v_it);
+		//oriP = oriP + (MyMesh::Point(X[i], Y[i], Z[i]) - oriP) * 0.01f;
+		//model.mesh.set_point(*v_it, oriP);
+		model.mesh.set_point(*v_it, MyMesh::Point(X[i], Y[i], Z[i]));
+	}//
+	model.LoadToShader();
+
 }

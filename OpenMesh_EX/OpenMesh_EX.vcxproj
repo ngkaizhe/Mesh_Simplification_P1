@@ -50,7 +50,7 @@
     <LibraryPath>..\OpenMesh-5.2\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <LinkIncremental>false</LinkIncremental>
+    <LinkIncremental>true</LinkIncremental>
     <IncludePath>..\OpenMesh-5.2\src;$(IncludePath)</IncludePath>
     <LibraryPath>..\OpenMesh-5.2\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
@@ -72,7 +72,7 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_USE_MATH_DEFINES;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>glu32.lib;opengl32.lib;OpenMeshCore.lib</AdditionalDependencies>
+      <AdditionalDependencies>freeglut.lib;opengl32.lib;glew32.lib;glu32.lib;OpenMeshCored.lib</AdditionalDependencies>
       <SubSystem>Console</SubSystem>
       <EntryPointSymbol>main</EntryPointSymbol>
     </Link>
