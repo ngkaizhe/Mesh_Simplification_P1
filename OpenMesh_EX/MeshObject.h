@@ -54,7 +54,7 @@ class MeshObject
 public:
 	struct VertexCost {
 		double cost;
-		OpenMesh::VertexHandle* vhPtr;
+		OpenMesh::VertexHandle vh;
 	};
 
 	MeshObject();

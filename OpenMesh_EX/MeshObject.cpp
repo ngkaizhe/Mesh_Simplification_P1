@@ -81,6 +81,7 @@ bool GLMesh::LoadModel(std::string fileName)
 			mesh.request_face_normals();
 			mesh.update_normals();
 			mesh.release_face_normals();
+			mesh.request_vertex_status();;
 		}
 
 		return true;
@@ -167,14 +168,16 @@ bool MeshObject::Init(std::string fileName)
 		// the valid vertices array to be binded to the property
 		std::vector<VertexCost> vertexCosts;
 
-		// get the current vertex information
-		MyMesh::Point vPF = model.mesh.point(*v_it);
-		glm::vec4 v = glm::vec4(vPF[0], vPF[1], vPF[2], 1);
 		// find the valid pairs by considering the (v1, v2) which is an edge
 		for (MyMesh::VVIter vv_it = model.mesh.vv_begin(*v_it); vv_it.is_valid(); vv_it++) {
-			VertexCost vertexCost;
-			vertexCost.vhPtr = &(*vv_it);
+			// get the quadratic matrix of baseVH
 			glm::mat4 Q = model.mesh.property(this->quadricMat, *v_it);
+			// get the current sideVH information
+			MyMesh::Point vPF = model.mesh.point(*vv_it);
+			glm::vec4 v = glm::vec4(vPF[0], vPF[1], vPF[2], 1);
+
+			VertexCost vertexCost;
+			vertexCost.vh = *vv_it;
 
 			// Cost/error value = (v(T) * M * v)
 			// as glm doesn't provide vector * matrix from the left
@@ -193,6 +196,9 @@ bool MeshObject::Init(std::string fileName)
 				return vc1.cost < vc2.cost;
 			}
 		);
+
+		// set the property values
+		model.mesh.property(this->validVertices, *v_it) = vertexCosts;
 	}
 
 	return retV;
@@ -223,6 +229,9 @@ void MeshObject::SimplifyMesh(SimplificationMode mode)
 {
 	// we use the skipping iterators, as we will ignore the vertices that were deleted
 	for (MyMesh::VertexIter v_it = model.mesh.vertices_sbegin(); v_it != model.mesh.vertices_end(); v_it++) {
+		// check whether the v_it already marked as delete then we will just skipped
+		if (model.mesh.status(*v_it).deleted()) continue;
+
 		// Find which vertex to be collapsed
 		MyMesh::VertexHandle baseVH = *v_it;
 		MyMesh::VertexHandle sideVH;
@@ -230,7 +239,7 @@ void MeshObject::SimplifyMesh(SimplificationMode mode)
 		std::vector<VertexCost> validVertices = model.mesh.property(this->validVertices, baseVH);
 		// start to choose the sideVH
 		for (int i = 0; i < validVertices.size();) {
-			sideVH = *(validVertices[i].vhPtr);
+			sideVH = validVertices[i].vh;
 
 			// if the current chosen sideVH is not deleted
 			if (sideVH.is_valid()) {
@@ -246,11 +255,11 @@ void MeshObject::SimplifyMesh(SimplificationMode mode)
 				validVertices.erase(validVertices.begin() + i);
 			}
 		}
-
-		// case consider for we couldn't any sideVH to be collapsed
+		// case consider for we couldn't find any sideVH to be collapsed
 		if (sideVH.is_valid()) {
 			// we will change the value of baseVH
 			glm::vec4 newV;
+			// Q = Q1 + Q2;
 			glm::mat4 newQ = model.mesh.property(this->quadricMat, baseVH) + model.mesh.property(this->quadricMat, sideVH);
 
 			// choose the different mode
@@ -272,16 +281,19 @@ void MeshObject::SimplifyMesh(SimplificationMode mode)
 					newV = glm::vec4(newP[0], newP[1], newP[2], 1);
 				}
 			}
+			// V = (V1 + V2) / 2
 			else if (mode == SimplificationMode::Middle) {
 				MyMesh::Point p1 = model.mesh.point(baseVH);
 				MyMesh::Point p2 = model.mesh.point(sideVH);
 				MyMesh::Point newP = (p1 + p2) / 2.0f;
 				newV = glm::vec4(newP[0], newP[1], newP[2], 1);
 			}
+			// V = V1 
 			else if (mode == SimplificationMode::V1) {
 				MyMesh::Point p1 = model.mesh.point(baseVH);
 				newV = glm::vec4(p1[0], p1[1], p1[2], 1);
 			}
+			// V = V2
 			else if (mode == SimplificationMode::V2) {
 				MyMesh::Point p1 = model.mesh.point(sideVH);
 				newV = glm::vec4(p1[0], p1[1], p1[2], 1);
@@ -298,13 +310,13 @@ void MeshObject::SimplifyMesh(SimplificationMode mode)
 			std::vector<VertexCost> baseVHValidVertices = model.mesh.property(this->validVertices, baseVH);
 			for (int i = 0; i < baseVHValidVertices.size(); i++) {
 				// pop off the sideVH from the baseVH's validVertices
-				if (*(baseVHValidVertices[i].vhPtr) == sideVH) {
+				if (baseVHValidVertices[i].vh == sideVH) {
 					baseVHValidVertices.erase(baseVHValidVertices.begin() + i);
 				}
 
 				// inform all vertices inside the baseVH's validVertices to update its cost value
 				else {
-					this->RecalculateCost(*(baseVHValidVertices[i].vhPtr), baseVH);
+					this->RecalculateCost(baseVHValidVertices[i].vh, baseVH);
 					i++;
 				}
 			}
@@ -313,14 +325,14 @@ void MeshObject::SimplifyMesh(SimplificationMode mode)
 			// inform all vertices inside the sideVH's validVertices to update its vhPtr and cost value
 			std::vector<VertexCost> sideVHValidVertices = model.mesh.property(this->validVertices, sideVH);
 			for (int i = 0; i < sideVHValidVertices.size(); i++) {
-				MyMesh::VertexHandle sideVHVH = *(sideVHValidVertices[i].vhPtr);
+				MyMesh::VertexHandle sideVHVH = sideVHValidVertices[i].vh;
 				std::vector<VertexCost> sideVHVHValidVertices = model.mesh.property(this->validVertices, sideVHVH);
 
 				// go through the vertex cost inside sideVHVH
 				for (int i = 0; i < sideVHVHValidVertices.size(); i++) {
-					if (*(sideVHVHValidVertices[i].vhPtr) == sideVH){
-						// update its vhPtr
-						sideVHVHValidVertices[i].vhPtr = &baseVH;
+					if (sideVHVHValidVertices[i].vh == sideVH){
+						// update its vhPtr to baseVH
+						sideVHVHValidVertices[i].vh = baseVH;
 						// update its cost value
 						this->RecalculateCost(sideVHVH, baseVH);
 						break;
@@ -345,6 +357,9 @@ void MeshObject::SimplifyMesh(SimplificationMode mode)
 			model.mesh.delete_vertex(sideVH, false);
 		}
 	}
+
+	// straight up called garbage collection
+	model.mesh.garbage_collection();
 }
 
 glm::mat4 MeshObject::GetErrorQuadricMatrix(OpenMesh::VertexHandle vh)
@@ -403,7 +418,7 @@ void MeshObject::RecalculateCost(OpenMesh::VertexHandle parentVH, OpenMesh::Vert
 	// only calculate specific vertex handle
 	else {
 		for (int i = 0; i < vertexCosts.size(); i++) {
-			if (childVH == *vertexCosts[i].vhPtr) {
+			if (childVH == vertexCosts[i].vh) {
 				// Cost/error value = (v(T) * M * v)
 				// as glm doesn't provide vector * matrix from the left
 				// so v(T) * M = (M(T) * v)(T) --> 1X4 vector

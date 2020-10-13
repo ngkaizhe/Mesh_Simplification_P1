@@ -129,7 +129,7 @@ namespace OpenMesh_EX {
 			this->menuStrip1->Items->AddRange(gcnew cli::array< System::Windows::Forms::ToolStripItem^  >(1) { this->fileToolStripMenuItem });
 			this->menuStrip1->Location = System::Drawing::Point(0, 0);
 			this->menuStrip1->Name = L"menuStrip1";
-			this->menuStrip1->Size = System::Drawing::Size(613, 24);
+			this->menuStrip1->Size = System::Drawing::Size(1239, 24);
 			this->menuStrip1->TabIndex = 1;
 			this->menuStrip1->Text = L"menuStrip1";
 			// 
@@ -180,7 +180,7 @@ namespace OpenMesh_EX {
 			hkcoglPanelPixelFormat1->Alpha_Buffer_Bits = HKOGLPanel::HKCOGLPanelPixelFormat::PIXELBITS::BITS_0;
 			hkcoglPanelPixelFormat1->Stencil_Buffer_Bits = HKOGLPanel::HKCOGLPanelPixelFormat::PIXELBITS::BITS_0;
 			this->hkoglPanelControl1->Pixel_Format = hkcoglPanelPixelFormat1;
-			this->hkoglPanelControl1->Size = System::Drawing::Size(297, 322);
+			this->hkoglPanelControl1->Size = System::Drawing::Size(610, 527);
 			this->hkoglPanelControl1->TabIndex = 2;
 			this->hkoglPanelControl1->Load += gcnew System::EventHandler(this, &MyForm::hkoglPanelControl1_Load);
 			this->hkoglPanelControl1->Paint += gcnew System::Windows::Forms::PaintEventHandler(this, &MyForm::hkoglPanelControl1_Paint);
@@ -212,7 +212,7 @@ namespace OpenMesh_EX {
 			this->tableLayoutPanel1->RowCount = 1;
 			this->tableLayoutPanel1->RowStyles->Add((gcnew System::Windows::Forms::RowStyle(System::Windows::Forms::SizeType::Percent, 49)));
 			this->tableLayoutPanel1->RowStyles->Add((gcnew System::Windows::Forms::RowStyle(System::Windows::Forms::SizeType::Absolute, 328)));
-			this->tableLayoutPanel1->Size = System::Drawing::Size(607, 328);
+			this->tableLayoutPanel1->Size = System::Drawing::Size(1233, 533);
 			this->tableLayoutPanel1->TabIndex = 3;
 			// 
 			// tableLayoutPanel3
@@ -225,7 +225,7 @@ namespace OpenMesh_EX {
 			this->tableLayoutPanel3->Controls->Add(this->label1, 0, 0);
 			this->tableLayoutPanel3->Controls->Add(this->tableLayoutPanel4, 0, 1);
 			this->tableLayoutPanel3->Dock = System::Windows::Forms::DockStyle::Fill;
-			this->tableLayoutPanel3->Location = System::Drawing::Point(306, 3);
+			this->tableLayoutPanel3->Location = System::Drawing::Point(619, 3);
 			this->tableLayoutPanel3->Name = L"tableLayoutPanel3";
 			this->tableLayoutPanel3->RowCount = 5;
 			this->tableLayoutPanel3->RowStyles->Add((gcnew System::Windows::Forms::RowStyle(System::Windows::Forms::SizeType::Absolute, 40)));
@@ -233,7 +233,7 @@ namespace OpenMesh_EX {
 			this->tableLayoutPanel3->RowStyles->Add((gcnew System::Windows::Forms::RowStyle(System::Windows::Forms::SizeType::Absolute, 40)));
 			this->tableLayoutPanel3->RowStyles->Add((gcnew System::Windows::Forms::RowStyle(System::Windows::Forms::SizeType::Absolute, 40)));
 			this->tableLayoutPanel3->RowStyles->Add((gcnew System::Windows::Forms::RowStyle()));
-			this->tableLayoutPanel3->Size = System::Drawing::Size(298, 322);
+			this->tableLayoutPanel3->Size = System::Drawing::Size(611, 527);
 			this->tableLayoutPanel3->TabIndex = 3;
 			// 
 			// tableLayoutPanel6
@@ -250,7 +250,7 @@ namespace OpenMesh_EX {
 			this->tableLayoutPanel6->Name = L"tableLayoutPanel6";
 			this->tableLayoutPanel6->RowCount = 1;
 			this->tableLayoutPanel6->RowStyles->Add((gcnew System::Windows::Forms::RowStyle(System::Windows::Forms::SizeType::Percent, 50)));
-			this->tableLayoutPanel6->Size = System::Drawing::Size(292, 34);
+			this->tableLayoutPanel6->Size = System::Drawing::Size(605, 34);
 			this->tableLayoutPanel6->TabIndex = 3;
 			// 
 			// label6
@@ -258,9 +258,9 @@ namespace OpenMesh_EX {
 			this->label6->AutoSize = true;
 			this->label6->BorderStyle = System::Windows::Forms::BorderStyle::FixedSingle;
 			this->label6->Dock = System::Windows::Forms::DockStyle::Fill;
-			this->label6->Location = System::Drawing::Point(149, 0);
+			this->label6->Location = System::Drawing::Point(305, 0);
 			this->label6->Name = L"label6";
-			this->label6->Size = System::Drawing::Size(140, 34);
+			this->label6->Size = System::Drawing::Size(297, 34);
 			this->label6->TabIndex = 2;
 			this->label6->Text = L"30";
 			this->label6->TextAlign = System::Drawing::ContentAlignment::MiddleCenter;
@@ -272,7 +272,7 @@ namespace OpenMesh_EX {
 			this->label7->Dock = System::Windows::Forms::DockStyle::Fill;
 			this->label7->Location = System::Drawing::Point(3, 0);
 			this->label7->Name = L"label7";
-			this->label7->Size = System::Drawing::Size(140, 34);
+			this->label7->Size = System::Drawing::Size(296, 34);
 			this->label7->TabIndex = 1;
 			this->label7->Text = L"Face Number:";
 			this->label7->TextAlign = System::Drawing::ContentAlignment::MiddleCenter;
@@ -291,7 +291,7 @@ namespace OpenMesh_EX {
 			this->tableLayoutPanel5->Name = L"tableLayoutPanel5";
 			this->tableLayoutPanel5->RowCount = 1;
 			this->tableLayoutPanel5->RowStyles->Add((gcnew System::Windows::Forms::RowStyle(System::Windows::Forms::SizeType::Percent, 50)));
-			this->tableLayoutPanel5->Size = System::Drawing::Size(292, 34);
+			this->tableLayoutPanel5->Size = System::Drawing::Size(605, 34);
 			this->tableLayoutPanel5->TabIndex = 2;
 			// 
 			// label4
@@ -299,9 +299,9 @@ namespace OpenMesh_EX {
 			this->label4->AutoSize = true;
 			this->label4->BorderStyle = System::Windows::Forms::BorderStyle::FixedSingle;
 			this->label4->Dock = System::Windows::Forms::DockStyle::Fill;
-			this->label4->Location = System::Drawing::Point(149, 0);
+			this->label4->Location = System::Drawing::Point(305, 0);
 			this->label4->Name = L"label4";
-			this->label4->Size = System::Drawing::Size(140, 34);
+			this->label4->Size = System::Drawing::Size(297, 34);
 			this->label4->TabIndex = 2;
 			this->label4->Text = L"50";
 			this->label4->TextAlign = System::Drawing::ContentAlignment::MiddleCenter;
@@ -313,7 +313,7 @@ namespace OpenMesh_EX {
 			this->label5->Dock = System::Windows::Forms::DockStyle::Fill;
 			this->label5->Location = System::Drawing::Point(3, 0);
 			this->label5->Name = L"label5";
-			this->label5->Size = System::Drawing::Size(140, 34);
+			this->label5->Size = System::Drawing::Size(296, 34);
 			this->label5->TabIndex = 1;
 			this->label5->Text = L"Edge Number:";
 			this->label5->TextAlign = System::Drawing::ContentAlignment::MiddleCenter;
@@ -325,7 +325,7 @@ namespace OpenMesh_EX {
 			this->label1->Dock = System::Windows::Forms::DockStyle::Fill;
 			this->label1->Location = System::Drawing::Point(3, 0);
 			this->label1->Name = L"label1";
-			this->label1->Size = System::Drawing::Size(292, 40);
+			this->label1->Size = System::Drawing::Size(605, 40);
 			this->label1->TabIndex = 0;
 			this->label1->Text = L"Mesh Info";
 			this->label1->TextAlign = System::Drawing::ContentAlignment::MiddleCenter;
@@ -344,7 +344,7 @@ namespace OpenMesh_EX {
 			this->tableLayoutPanel4->Name = L"tableLayoutPanel4";
 			this->tableLayoutPanel4->RowCount = 1;
 			this->tableLayoutPanel4->RowStyles->Add((gcnew System::Windows::Forms::RowStyle(System::Windows::Forms::SizeType::Percent, 50)));
-			this->tableLayoutPanel4->Size = System::Drawing::Size(292, 34);
+			this->tableLayoutPanel4->Size = System::Drawing::Size(605, 34);
 			this->tableLayoutPanel4->TabIndex = 1;
 			// 
 			// label3
@@ -352,9 +352,9 @@ namespace OpenMesh_EX {
 			this->label3->AutoSize = true;
 			this->label3->BorderStyle = System::Windows::Forms::BorderStyle::FixedSingle;
 			this->label3->Dock = System::Windows::Forms::DockStyle::Fill;
-			this->label3->Location = System::Drawing::Point(149, 0);
+			this->label3->Location = System::Drawing::Point(305, 0);
 			this->label3->Name = L"label3";
-			this->label3->Size = System::Drawing::Size(140, 34);
+			this->label3->Size = System::Drawing::Size(297, 34);
 			this->label3->TabIndex = 2;
 			this->label3->Text = L"100";
 			this->label3->TextAlign = System::Drawing::ContentAlignment::MiddleCenter;
@@ -366,7 +366,7 @@ namespace OpenMesh_EX {
 			this->label2->Dock = System::Windows::Forms::DockStyle::Fill;
 			this->label2->Location = System::Drawing::Point(3, 0);
 			this->label2->Name = L"label2";
-			this->label2->Size = System::Drawing::Size(140, 34);
+			this->label2->Size = System::Drawing::Size(296, 34);
 			this->label2->TabIndex = 1;
 			this->label2->Text = L"Vertex Number: ";
 			this->label2->TextAlign = System::Drawing::ContentAlignment::MiddleCenter;
@@ -383,14 +383,14 @@ namespace OpenMesh_EX {
 			this->tableLayoutPanel2->RowCount = 2;
 			this->tableLayoutPanel2->RowStyles->Add((gcnew System::Windows::Forms::RowStyle(System::Windows::Forms::SizeType::Percent, 77.67442F)));
 			this->tableLayoutPanel2->RowStyles->Add((gcnew System::Windows::Forms::RowStyle(System::Windows::Forms::SizeType::Percent, 22.32558F)));
-			this->tableLayoutPanel2->Size = System::Drawing::Size(613, 430);
+			this->tableLayoutPanel2->Size = System::Drawing::Size(1239, 695);
 			this->tableLayoutPanel2->TabIndex = 4;
 			// 
 			// MyForm
 			// 
 			this->AutoScaleDimensions = System::Drawing::SizeF(6, 12);
 			this->AutoScaleMode = System::Windows::Forms::AutoScaleMode::Font;
-			this->ClientSize = System::Drawing::Size(613, 454);
+			this->ClientSize = System::Drawing::Size(1239, 719);
 			this->Controls->Add(this->tableLayoutPanel2);
 			this->Controls->Add(this->menuStrip1);
 			this->MainMenuStrip = this->menuStrip1;
@@ -428,6 +428,11 @@ private: System::Void hkoglPanelControl1_Load(System::Object^  sender, System::E
 
 	// init shader and model
 	shader = Shader("../Assets/shaders/vertex.vs.glsl", "../Assets/shaders/fragment.fs.glsl");
+
+	// do load model action
+	meshPtr = new MeshObject();
+	meshPtr->Init("C:/Users/ngkaizhe/Desktop/OpenMesh_EX/Assets/Models/UnionSphere.obj");
+	meshInited = true;
 }
 private: System::Void hkoglPanelControl1_Paint(System::Object^  sender, System::Windows::Forms::PaintEventArgs^  e)
 {
@@ -469,6 +474,9 @@ private: System::Void hkoglPanelControl1_KeyPress(System::Object^ sender, System
 	printf("Key %c is pressed\n", e->KeyChar);
 
 	// debug part
+	if ((unsigned char)e->KeyChar == ' ' && meshPtr) {
+		meshPtr->SimplifyMesh(SimplificationMode::SmallestError);
+	}
 
 }
 private: System::Void hkoglPanelControl1_MouseDown(System::Object^  sender, System::Windows::Forms::MouseEventArgs^  e)
