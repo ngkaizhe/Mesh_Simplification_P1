@@ -62,6 +62,7 @@ public:
 
 	bool Init(std::string fileName);
 	void Render(Shader shader);
+	void RenderPoint(Shader shader);
 
 	int GetVerticesNumber();
 	int GetEdgesNumber();

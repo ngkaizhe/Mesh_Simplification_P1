@@ -213,6 +213,14 @@ void MeshObject::Render(Shader shader)
 	glBindVertexArray(0);
 }
 
+void MeshObject::RenderPoint(Shader shader) {
+	shader.use();
+
+	glBindVertexArray(model.vao);
+	glDrawElements(GL_POINTS, model.mesh.n_vertices(), GL_UNSIGNED_INT, 0);
+	glBindVertexArray(0);
+}
+
 int MeshObject::GetVerticesNumber() {
 	return model.mesh.n_vertices();
 }

@@ -425,18 +425,20 @@ private: System::Void hkoglPanelControl1_Load(System::Object^  sender, System::E
 	glEnable(GL_DEPTH_TEST);
 	glDisable(GL_CULL_FACE);
 	glDepthFunc(GL_LEQUAL);
+	glEnable(GL_PROGRAM_POINT_SIZE);
+	glEnable(GL_COLOR_MATERIAL);
+	glPointSize(5);
 
 	// init shader and model
 	shader = Shader("../Assets/shaders/vertex.vs.glsl", "../Assets/shaders/fragment.fs.glsl");
 
 	// do load model action
 	meshPtr = new MeshObject();
-	meshPtr->Init("C:/Users/ngkaizhe/Desktop/OpenMesh_EX/Assets/Models/UnionSphere.obj");
+	meshPtr->Init("C:/Users/ngkaizhe/Desktop/OpenMesh_EX/Assets/Models/neptune.obj");
 	meshInited = true;
 }
 private: System::Void hkoglPanelControl1_Paint(System::Object^  sender, System::Windows::Forms::PaintEventArgs^  e)
 {
-	glEnable(GL_COLOR_MATERIAL);
 	glClearColor(0.5f, 0.5f, 1.0f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT);
 
@@ -460,6 +462,9 @@ private: System::Void hkoglPanelControl1_Paint(System::Object^  sender, System::
 		shader.setUniform3fv("color", glm::vec3(1.0f, 1.0f, 0.0f));
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 		meshPtr->Render(shader);
+		// point
+		shader.setUniform3fv("color", glm::vec3(0.0f, 0.0f, 1.0f));
+		meshPtr->RenderPoint(shader);
 	}
 }
 
