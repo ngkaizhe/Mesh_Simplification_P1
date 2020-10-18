@@ -431,11 +431,6 @@ private: System::Void hkoglPanelControl1_Load(System::Object^  sender, System::E
 
 	// init shader and model
 	shader = Shader("../Assets/shaders/vertex.vs.glsl", "../Assets/shaders/fragment.fs.glsl");
-
-	// do load model action
-	meshPtr = new MeshObject();
-	meshPtr->Init("C:/Users/ngkaizhe/Desktop/OpenMesh_EX/Assets/Models/neptune.obj");
-	meshInited = true;
 }
 private: System::Void hkoglPanelControl1_Paint(System::Object^  sender, System::Windows::Forms::PaintEventArgs^  e)
 {
@@ -464,7 +459,7 @@ private: System::Void hkoglPanelControl1_Paint(System::Object^  sender, System::
 		meshPtr->Render(shader);
 		// point
 		shader.setUniform3fv("color", glm::vec3(0.0f, 0.0f, 1.0f));
-		meshPtr->RenderPoint(shader);
+		meshPtr->DebugRender(shader);
 	}
 }
 
@@ -480,7 +475,7 @@ private: System::Void hkoglPanelControl1_KeyPress(System::Object^ sender, System
 
 	// debug part
 	if ((unsigned char)e->KeyChar == ' ' && meshPtr) {
-		meshPtr->SimplifyMesh(SimplificationMode::SmallestError);
+		meshPtr->SimplifyMesh(SimplificationMode::SmallestError, meshPtr->GetVerticesNumber() - 100);
 	}
 
 }

@@ -36,6 +36,8 @@ public:
 	GLuint ebo;
 	GLuint vboVertices, vboNormal;
 
+	void ReLoadToShader();
+
 private:
 
 	bool LoadModel(std::string fileName);
@@ -65,12 +67,15 @@ public:
 	void Render(Shader shader);
 	void RenderPoint(Shader shader);
 
+	// debug
+	void DebugRender(Shader shader);
+
 	int GetVerticesNumber();
 	int GetEdgesNumber();
 	int GetFacesNumber();
 
 	// decrease the vertex number
-	void SimplifyMesh(SimplificationMode mode);
+	void SimplifyMesh(SimplificationMode mode, int vertices_left);
 
 private:
 	// some added properties
@@ -85,11 +90,17 @@ private:
 	// helper function
 	// get error quadratic matrix
 	glm::mat4 GetErrorQuadricMatrix(OpenMesh::VertexHandle vh);
-	// check whether the vertex pair is an concave edge
-	bool CheckConcave(OpenMesh::VertexHandle baseVH, OpenMesh::VertexHandle sideVH);
+	// check whether the edge is an concave edge
+	bool CheckConcave(OpenMesh::EdgeHandle eh);
 	// set cost of edge handle with property
-	void SetCost(MyMesh::EdgeHandle eh, SimplificationMode mode);
+	void SetCost(MyMesh::EdgeHandle eh);
 	// rearrange the heap
 	void RearrangeHeap();
+
+
+	// debug purpose
+	void RecalculateCollapseVerticesToRender();
+	std::vector<MyMesh::VertexHandle> CollapseVerticesToRender;
+	bool CollapseRecalculated;
 };
 

@@ -141,6 +141,10 @@ void GLMesh::LoadToShader()
 	glBindVertexArray(0);
 }
 
+void GLMesh::ReLoadToShader() {
+	LoadToShader();
+}
+
 #pragma endregion
 
 MeshObject::MeshObject()
@@ -163,52 +167,16 @@ bool MeshObject::Init(std::string fileName)
 		model.mesh.property(this->quadricMat, *v_it) = GetErrorQuadricMatrix(*v_it);
 	}
 
-	// initial vPairs and its cost
-	for (MyMesh::VertexIter v_it = model.mesh.vertices_begin(); v_it != model.mesh.vertices_end(); v_it++) {
-		// the valid vertices array to be binded to the property
-		std::vector<VertexCost> vertexCosts;
-
-		// find the valid pairs by considering the (v1, v2) which is an edge
-		for (MyMesh::VVIter vv_it = model.mesh.vv_begin(*v_it); vv_it.is_valid(); vv_it++) {
-			// get the quadratic matrix of baseVH
-			glm::mat4 Q = model.mesh.property(this->quadricMat, *v_it);
-			// get the current sideVH information
-			MyMesh::Point vPF = model.mesh.point(*vv_it);
-			glm::vec4 v = glm::vec4(vPF[0], vPF[1], vPF[2], 1);
-
-			VertexCost vertexCost;
-			vertexCost.vh = *vv_it;
-
-			// Cost/error value = (v(T) * M * v)
-			// as glm doesn't provide vector * matrix from the left
-			// so v(T) * M = (M(T) * v)(T) --> 1X4 vector
-			// 1X4 vector * 4X1 vector = dot product
-			vertexCost.cost = glm::dot(glm::transpose(Q) * v, v);
-
-			// save to the array
-			vertexCosts.push_back(vertexCost);
-		}
-
-		// sort the vertex cost array
-		// the minimum will be the front
-		std::sort(vertexCosts.begin(), vertexCosts.end(), 
-			[](VertexCost vc1, VertexCost vc2) {
-				return vc1.cost < vc2.cost;
-			}
-		);
-
-		// set the property values
-		model.mesh.property(this->validVertices, *v_it) = vertexCosts;
-	}
-
 	// initial the cost of all edge handle
 	for (MyMesh::EdgeIter e_it = model.mesh.edges_begin(); e_it != model.mesh.edges_end(); e_it++) {
-		this->SetCost(*e_it, SimplificationMode::SmallestError);
+		this->SetCost(*e_it);
 		this->heap.push_back(*e_it);
 	}
 
 	// sort the heap
 	this->RearrangeHeap();
+
+	CollapseRecalculated = false;
 
 	return retV;
 }
@@ -230,6 +198,52 @@ void MeshObject::RenderPoint(Shader shader) {
 	glBindVertexArray(0);
 }
 
+void MeshObject::DebugRender(Shader shader) {
+	if(!CollapseRecalculated)	this->RecalculateCollapseVerticesToRender();
+	shader.use();
+
+	std::vector<MyMesh::Point> vertices;
+	vertices.reserve(CollapseVerticesToRender.size() * 3);
+	for (int i = 0; i < CollapseVerticesToRender.size(); i++) {
+		vertices.push_back(model.mesh.point(CollapseVerticesToRender[i]));
+	}
+
+	GLuint tempEbo;
+	glGenBuffers(1, &tempEbo);
+	glBindBuffer(GL_ARRAY_BUFFER, tempEbo);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(MyMesh::Point) * vertices.size(), &vertices[0], GL_STATIC_DRAW);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+	glEnableVertexAttribArray(0);
+	
+	glDrawArrays(GL_POINTS, 0, vertices.size());
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+void MeshObject::RecalculateCollapseVerticesToRender() {
+	CollapseVerticesToRender.clear();
+
+	// for each edge collapse
+	// might let our edge decreased by 3
+	// get the edge handle from the first element of heap
+	MyMesh::HalfedgeHandle heh;
+	for (int i = 0; i < heap.size(); i++) {
+		// we dont collapse the concave edge
+		if (!this->CheckConcave(heap[i])) {
+			heh = model.mesh.halfedge_handle(heap[i], 0);
+			break;
+		}
+	}
+
+	// get the 2 vertice handles of the edge handle
+	MyMesh::VertexHandle vh1 = model.mesh.to_vertex_handle(heh);
+
+	for (MyMesh::VVCWIter vv_it = model.mesh.vv_cwbegin(vh1); vv_it != model.mesh.vv_cwend(vh1); vv_it++) {
+		CollapseVerticesToRender.push_back(*vv_it);
+	}
+
+	CollapseRecalculated = true;
+}
+
 int MeshObject::GetVerticesNumber() {
 	return model.mesh.n_vertices();
 }
@@ -242,141 +256,110 @@ int MeshObject::GetFacesNumber() {
 return model.mesh.n_faces();
 }
 
-void MeshObject::SimplifyMesh(SimplificationMode mode)
+void MeshObject::SimplifyMesh(SimplificationMode mode, int vertices_left)
 {
-	// we use the skipping iterators, as we will ignore the vertices that were deleted
-	for (MyMesh::VertexIter v_it = model.mesh.vertices_sbegin(); v_it != model.mesh.vertices_end(); v_it++) {
-		// check whether the v_it already marked as delete then we will just skipped
-		if (model.mesh.status(*v_it).deleted()) continue;
-
-		// Find which vertex to be collapsed
-		MyMesh::VertexHandle baseVH = *v_it;
-		MyMesh::VertexHandle sideVH;
-
-		std::vector<VertexCost> validVertices = model.mesh.property(this->validVertices, baseVH);
-		// start to choose the sideVH
-		for (int i = 0; i < validVertices.size();) {
-			sideVH = validVertices[i].vh;
-
-			// if the current chosen sideVH is not deleted
-			if (sideVH.is_valid()) {
-				// Check whether the edge whether is concave or not
-				if (!this->CheckConcave(baseVH, sideVH) && !this->CheckConcave(sideVH, baseVH)) {
-					break;
-				}
-				i++;
-			}
-			// else we will just pop off the deleted vertex
-			else {
-				// this part shouldn't be called
-				validVertices.erase(validVertices.begin() + i);
+	bool done = false;
+	// recheck whether the we reached the total vertices should be
+	while (model.mesh.n_vertices() > vertices_left && !done) {
+		done = true;
+		// for each edge collapse
+		// might let our edge decreased by 3
+		// get the edge handle from the first element of heap
+		MyMesh::HalfedgeHandle heh;
+		for (int i = 0; i < heap.size(); i++) {
+			// we dont collapse the concave edge
+			if (!this->CheckConcave(heap[i])) {
+				heh = model.mesh.halfedge_handle(heap[i], 0);
+				break;
 			}
 		}
-		// case consider for we couldn't find any sideVH to be collapsed
-		if (sideVH.is_valid()) {
-			// we will change the value of baseVH
-			glm::vec4 newV;
-			// Q = Q1 + Q2;
-			glm::mat4 newQ = model.mesh.property(this->quadricMat, baseVH) + model.mesh.property(this->quadricMat, sideVH);
 
-			// choose the different mode
-			if (mode == SimplificationMode::SmallestError) {
-				// set the differential matrix
-				glm::mat4 differentialMat = newQ;
-				// set the last row to (0, 0, 0, 1)
-				glm::row(differentialMat, 3, glm::vec4(0, 0, 0, 1));
+		// get the 2 vertice handles of the edge handle
+		MyMesh::VertexHandle vh1 = model.mesh.to_vertex_handle(heh);
+		MyMesh::VertexHandle vh2 = model.mesh.from_vertex_handle(heh);
 
-				// if the differential matrix is invertible
-				if (glm::determinant(differentialMat) != 0) {
-					newV = glm::inverse(differentialMat) * glm::vec4(0, 0, 0, 1);
-				}
-				// else we just use the middle point
-				else {
-					MyMesh::Point p1 = model.mesh.point(baseVH);
-					MyMesh::Point p2 = model.mesh.point(sideVH);
-					MyMesh::Point newP = (p1 + p2) / 2.0f;
-					newV = glm::vec4(newP[0], newP[1], newP[2], 1);
-				}
+		// find the newQ
+		glm::mat4 newQ = model.mesh.property(this->quadricMat, vh1) + model.mesh.property(this->quadricMat, vh2);
+		// the final vertex position to be
+		glm::vec4 newV;
+
+		// choose the different mode
+		if (mode == SimplificationMode::SmallestError) {
+			MyMesh::Point p1 = model.mesh.point(vh1);
+			MyMesh::Point p2 = model.mesh.point(vh2);
+			// set the differential matrix
+			glm::mat4 differentialMat = newQ;
+			// set the last row to (0, 0, 0, 1)
+			differentialMat = glm::row(differentialMat, 3, glm::vec4(0, 0, 0, 1));
+
+			// if the differential matrix is invertible
+			if (glm::determinant(differentialMat) != 0) {
+				newV = glm::inverse(differentialMat) * glm::vec4(0, 0, 0, 1);
 			}
-			// V = (V1 + V2) / 2
-			else if (mode == SimplificationMode::Middle) {
-				MyMesh::Point p1 = model.mesh.point(baseVH);
-				MyMesh::Point p2 = model.mesh.point(sideVH);
+			// else we just use the middle point
+			else {
+				MyMesh::Point p1 = model.mesh.point(vh1);
+				MyMesh::Point p2 = model.mesh.point(vh2);
 				MyMesh::Point newP = (p1 + p2) / 2.0f;
 				newV = glm::vec4(newP[0], newP[1], newP[2], 1);
 			}
-			// V = V1 
-			else if (mode == SimplificationMode::V1) {
-				MyMesh::Point p1 = model.mesh.point(baseVH);
-				newV = glm::vec4(p1[0], p1[1], p1[2], 1);
-			}
-			// V = V2
-			else if (mode == SimplificationMode::V2) {
-				MyMesh::Point p1 = model.mesh.point(sideVH);
-				newV = glm::vec4(p1[0], p1[1], p1[2], 1);
-			}
-
-			// till now we have a newV and newQ
-			// assign the new value to baseVH
-			model.mesh.property(this->quadricMat, baseVH) = newQ;
-			model.mesh.set_point(baseVH, MyMesh::Point(newV[0], newV[1], newV[2]));
-
-			// the processes below is to collapse the sideVH
-			// pop off the sideVH from the baseVH's validVertices or
-			// inform all vertices inside the baseVH's validVertices to update its cost value
-			std::vector<VertexCost> baseVHValidVertices = model.mesh.property(this->validVertices, baseVH);
-			for (int i = 0; i < baseVHValidVertices.size(); i++) {
-				// pop off the sideVH from the baseVH's validVertices
-				if (baseVHValidVertices[i].vh == sideVH) {
-					baseVHValidVertices.erase(baseVHValidVertices.begin() + i);
-				}
-
-				// inform all vertices inside the baseVH's validVertices to update its cost value
-				else {
-					this->RecalculateCost(baseVHValidVertices[i].vh, baseVH);
-					i++;
-				}
-			}
-			model.mesh.property(this->validVertices, baseVH) = baseVHValidVertices;
-
-			// inform all vertices inside the sideVH's validVertices to update its vhPtr and cost value
-			std::vector<VertexCost> sideVHValidVertices = model.mesh.property(this->validVertices, sideVH);
-			for (int i = 0; i < sideVHValidVertices.size(); i++) {
-				MyMesh::VertexHandle sideVHVH = sideVHValidVertices[i].vh;
-				std::vector<VertexCost> sideVHVHValidVertices = model.mesh.property(this->validVertices, sideVHVH);
-
-				// go through the vertex cost inside sideVHVH
-				for (int i = 0; i < sideVHVHValidVertices.size(); i++) {
-					if (sideVHVHValidVertices[i].vh == sideVH){
-						// update its vhPtr to baseVH
-						sideVHVHValidVertices[i].vh = baseVH;
-						// update its cost value
-						this->RecalculateCost(sideVHVH, baseVH);
-						break;
-					}		
-				}
-
-				// assign back the vector
-				model.mesh.property(this->validVertices, sideVHVH) = sideVHVHValidVertices;
-			}
-
-			// merge the sideVH's validVertices to baseVH's validVertices
-			std::vector<VertexCost> newValidVertices;
-			newValidVertices.reserve(baseVHValidVertices.size() + sideVHValidVertices.size());
-			newValidVertices.insert(newValidVertices.end(), baseVHValidVertices.begin(), baseVHValidVertices.end());
-			newValidVertices.insert(newValidVertices.end(), sideVHValidVertices.begin(), sideVHValidVertices.end());
-			model.mesh.property(this->validVertices, baseVH) = newValidVertices;
-
-			// update the baseVH's validVertices' cost value
-			RecalculateCost(baseVH);
-
-			// remove the sideVH from the mesh
-			model.mesh.delete_vertex(sideVH, false);
 		}
+		// V = (V1 + V2) / 2
+		else if (mode == SimplificationMode::Middle) {
+			MyMesh::Point p1 = model.mesh.point(vh1);
+			MyMesh::Point p2 = model.mesh.point(vh2);
+			MyMesh::Point newP = (p1 + p2) / 2.0f;
+			newV = glm::vec4(newP[0], newP[1], newP[2], 1);
+		}
+		// V = V1 
+		else if (mode == SimplificationMode::V1) {
+			MyMesh::Point p1 = model.mesh.point(vh1);
+			newV = glm::vec4(p1[0], p1[1], p1[2], 1);
+		}
+		// V = V2
+		else if (mode == SimplificationMode::V2) {
+			MyMesh::Point p1 = model.mesh.point(vh2);
+			newV = glm::vec4(p1[0], p1[1], p1[2], 1);
+		}
+
+		// collapse the halfedge (vh2 -> vh1)
+		model.mesh.collapse(heh);
+		// set the new vertex point
+		model.mesh.set_point(vh1, MyMesh::Point(newV[0], newV[1], newV[2]));
+		// set the vh1 quadratic matrix
+		model.mesh.property(this->quadricMat, vh1) = newQ;
+
+		// straight up called garbage collection
+		// to delete the edge we collapsed before
+		model.mesh.garbage_collection();
+		
+		if (model.mesh.status(vh1).deleted()) {
+			std::cout << "vh1 deleted!\n";
+		}
+
+		if (model.mesh.status(vh2).deleted()) {
+			std::cout << "vh2 deleted!\n";
+		}
+		if (model.mesh.status(heh).deleted()) {
+			std::cout << "heh deleted!\n";
+		}
+
+		// recalculate the edge's cost around the vh1
+		for (MyMesh::VertexEdgeCWIter ve_it = model.mesh.ve_cwbegin(vh1); ve_it != model.mesh.ve_cwend(vh1); ve_it++) {
+			MyMesh::EdgeHandle eh = *ve_it;
+			this->SetCost(eh);
+		}
+
+		// rearrange our heap
+		this->RearrangeHeap();
+
+		// need to recalculate the collapsed vertices again
+		CollapseRecalculated = false;
 	}
 
-	// straight up called garbage collection
-	model.mesh.garbage_collection();
+	// finish calling simplify mesh
+	// we reload our vao and vbo
+	model.ReLoadToShader();
 }
 
 glm::mat4 MeshObject::GetErrorQuadricMatrix(OpenMesh::VertexHandle vh)
@@ -393,7 +376,7 @@ glm::mat4 MeshObject::GetErrorQuadricMatrix(OpenMesh::VertexHandle vh)
 		// n = <a, b, c> which a^2 + b^2 + c^2 = 1
 		n = glm::normalize(n);
 
-		// get the point which is on the plane
+		// get the point which is on the plane(that is the center point)
 		// point = (x0, y0, z0)
 		MyMesh::Point vPF = model.mesh.point(vh);
 		// plane equation -> ax + by + cz - (ax0 + by0 + cz0) = 0
@@ -408,63 +391,12 @@ glm::mat4 MeshObject::GetErrorQuadricMatrix(OpenMesh::VertexHandle vh)
 	return Kps;
 }
 
-// recalculate all valid vertices cost of the current vertex handle
-// or recalculate the current vh cost of the valid vertices of the vertex handle
-void MeshObject::RecalculateCost(OpenMesh::VertexHandle parentVH, OpenMesh::VertexHandle childVH)
-{
-	// the valid vertices array to be binded to the property
-	std::vector<VertexCost> vertexCosts = model.mesh.property(this->validVertices, parentVH);
-
-	// get the current vertex information
-	MyMesh::Point vPF = model.mesh.point(parentVH);
-	glm::vec4 v = glm::vec4(vPF[0], vPF[1], vPF[2], 1);
-	glm::mat4 Q = model.mesh.property(this->quadricMat, parentVH);
-
-	// 2 conditions: either we recalculate all vertex handle, or we only calculate specific vertex handle
-	// recalculate all vertex handle
-	if (!childVH.is_valid()) {
-		// recalculate all cost from the vertexCosts
-		for (int i = 0; i < vertexCosts.size(); i++) {
-			// Cost/error value = (v(T) * M * v)
-			// as glm doesn't provide vector * matrix from the left
-			// so v(T) * M = (M(T) * v)(T) --> 1X4 vector
-			// 1X4 vector * 4X1 vector = dot product
-			vertexCosts[i].cost = glm::dot(glm::transpose(Q) * v, v);
-		}
-	} 
-	// only calculate specific vertex handle
-	else {
-		for (int i = 0; i < vertexCosts.size(); i++) {
-			if (childVH == vertexCosts[i].vh) {
-				// Cost/error value = (v(T) * M * v)
-				// as glm doesn't provide vector * matrix from the left
-				// so v(T) * M = (M(T) * v)(T) --> 1X4 vector
-				// 1X4 vector * 4X1 vector = dot product
-				vertexCosts[i].cost = glm::dot(glm::transpose(Q) * v, v);
-				break;
-			}
-			
-		}
-	}
-
-	// sort the vertex cost array
-	// the minimum will be the front
-	std::sort(vertexCosts.begin(), vertexCosts.end(),
-		[](VertexCost vc1, VertexCost vc2) {
-			return vc1.cost < vc2.cost;
-		}
-	);
-
-	// assigned back the vertexCost to parentVH
-	model.mesh.property(this->validVertices, parentVH) = vertexCosts;
-}
-
-bool MeshObject::CheckConcave(OpenMesh::VertexHandle baseVH, OpenMesh::VertexHandle sideVH)
+bool MeshObject::CheckConcave(OpenMesh::EdgeHandle eh)
 {
 	return false;
 }
 
-void MeshObject::SetCost(MyMesh::EdgeHandle eh, SimplificationMode mode)
+void MeshObject::SetCost(MyMesh::EdgeHandle eh)
 {
 	double cost;
 	// find the halfEdge handle from the edge handle
@@ -477,41 +409,22 @@ void MeshObject::SetCost(MyMesh::EdgeHandle eh, SimplificationMode mode)
 	glm::vec4 newV;
 
 	// find the collapse result(vertex position)
-	// choose the different mode
-	if (mode == SimplificationMode::SmallestError) {
-		// set the differential matrix
-		glm::mat4 differentialMat = newQ;
-		// set the last row to (0, 0, 0, 1)
-		glm::row(differentialMat, 3, glm::vec4(0, 0, 0, 1));
+	// we will use the smallest error to define our error value
+	// set the differential matrix
+	glm::mat4 differentialMat = newQ;
+	// set the last row to (0, 0, 0, 1)
+	glm::row(differentialMat, 3, glm::vec4(0, 0, 0, 1));
 
-		// if the differential matrix is invertible
-		if (glm::determinant(differentialMat) != 0) {
-			newV = glm::inverse(differentialMat) * glm::vec4(0, 0, 0, 1);
-		}
-		// else we just use the middle point
-		else {
-			MyMesh::Point p1 = model.mesh.point(vh1);
-			MyMesh::Point p2 = model.mesh.point(vh2);
-			MyMesh::Point newP = (p1 + p2) / 2.0f;
-			newV = glm::vec4(newP[0], newP[1], newP[2], 1);
-		}
+	// if the differential matrix is invertible
+	if (glm::determinant(differentialMat) != 0) {
+		newV = glm::inverse(differentialMat) * glm::vec4(0, 0, 0, 1);
 	}
-	// V = (V1 + V2) / 2
-	else if (mode == SimplificationMode::Middle) {
+	// else we just use the middle point
+	else {
 		MyMesh::Point p1 = model.mesh.point(vh1);
 		MyMesh::Point p2 = model.mesh.point(vh2);
 		MyMesh::Point newP = (p1 + p2) / 2.0f;
 		newV = glm::vec4(newP[0], newP[1], newP[2], 1);
-	}
-	// V = V1 
-	else if (mode == SimplificationMode::V1) {
-		MyMesh::Point p1 = model.mesh.point(vh1);
-		newV = glm::vec4(p1[0], p1[1], p1[2], 1);
-	}
-	// V = V2
-	else if (mode == SimplificationMode::V2) {
-		MyMesh::Point p1 = model.mesh.point(vh2);
-		newV = glm::vec4(p1[0], p1[1], p1[2], 1);
 	}
 
 	// calculate the cost
@@ -530,6 +443,13 @@ void MeshObject::RearrangeHeap()
 	MyMesh::EdgeHandle tempEh;
 	int min;
 
+	// recheck whether which edge handle has already collapsed
+	// if found pop away then
+	for (int i = 0; i < heap.size();) {
+		if (!heap[i].is_valid()) heap.erase(heap.begin() + i);
+		else i++;
+	}
+
 	// selection sort
 	// sort the heap cost array
 	// the minimum will be the front
@@ -537,7 +457,7 @@ void MeshObject::RearrangeHeap()
 		min = i;
 		for (int j = i + 1; j < heap.size(); j++) {
 			// exchange the index
-			if (heap[j] < heap[min]) {
+			if (model.mesh.property(this->cost, heap[j]) < model.mesh.property(this->cost, heap[min])) {
 				min = j;
 			}
 		}
@@ -548,9 +468,3 @@ void MeshObject::RearrangeHeap()
 		heap[min] = tempEh;
 	}
 }
-
-
-
-
-
-
