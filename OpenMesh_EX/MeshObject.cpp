@@ -170,7 +170,6 @@ bool MeshObject::Init(std::string fileName)
 	// initial the cost of all edge handle
 	for (MyMesh::EdgeIter e_it = model.mesh.edges_begin(); e_it != model.mesh.edges_end(); e_it++) {
 		this->SetCost(*e_it);
-		this->heap.push_back(*e_it);
 	}
 
 	// sort the heap
@@ -258,10 +257,8 @@ return model.mesh.n_faces();
 
 void MeshObject::SimplifyMesh(SimplificationMode mode, int vertices_left)
 {
-	bool done = false;
 	// recheck whether the we reached the total vertices should be
-	while (model.mesh.n_vertices() > vertices_left && !done) {
-		done = true;
+	while (model.mesh.n_vertices() > vertices_left) {
 		// for each edge collapse
 		// might let our edge decreased by 3
 		// get the edge handle from the first element of heap
@@ -329,26 +326,15 @@ void MeshObject::SimplifyMesh(SimplificationMode mode, int vertices_left)
 		// set the vh1 quadratic matrix
 		model.mesh.property(this->quadricMat, vh1) = newQ;
 
-		// straight up called garbage collection
-		// to delete the edge we collapsed before
-		model.mesh.garbage_collection();
-		
-		if (model.mesh.status(vh1).deleted()) {
-			std::cout << "vh1 deleted!\n";
-		}
-
-		if (model.mesh.status(vh2).deleted()) {
-			std::cout << "vh2 deleted!\n";
-		}
-		if (model.mesh.status(heh).deleted()) {
-			std::cout << "heh deleted!\n";
-		}
-
 		// recalculate the edge's cost around the vh1
 		for (MyMesh::VertexEdgeCWIter ve_it = model.mesh.ve_cwbegin(vh1); ve_it != model.mesh.ve_cwend(vh1); ve_it++) {
 			MyMesh::EdgeHandle eh = *ve_it;
 			this->SetCost(eh);
 		}
+
+		// straight up called garbage collection
+		// to delete the edge and vertex we collapsed before
+		model.mesh.garbage_collection();
 
 		// rearrange our heap
 		this->RearrangeHeap();
@@ -443,28 +429,25 @@ void MeshObject::RearrangeHeap()
 	MyMesh::EdgeHandle tempEh;
 	int min;
 
-	// recheck whether which edge handle has already collapsed
-	// if found pop away then
-	for (int i = 0; i < heap.size();) {
-		if (!heap[i].is_valid()) heap.erase(heap.begin() + i);
-		else i++;
-	}
+	// we recreate the heap
+	heap.clear();
+	heap.reserve(model.mesh.n_edges());
 
-	// selection sort
-	// sort the heap cost array
-	// the minimum will be the front
-	for (int i = 0; i < heap.size() - 1; i++) {
-		min = i;
-		for (int j = i + 1; j < heap.size(); j++) {
-			// exchange the index
-			if (model.mesh.property(this->cost, heap[j]) < model.mesh.property(this->cost, heap[min])) {
-				min = j;
+	// repush our edge handle into heap
+	for (MyMesh::EdgeIter e_it = model.mesh.edges_begin(); e_it != model.mesh.edges_end(); e_it++) {
+		MyMesh::EdgeHandle eh = *e_it;
+
+		// sort in the process of pushing
+		int i;
+		for (i = 0; i < heap.size(); i++) {
+			if (model.mesh.property(this->cost, heap[i]) > model.mesh.property(this->cost, eh)) {
+				i--;
+				break;
 			}
 		}
 
-		// exchange the heap[i] and heap[min]
-		tempEh = heap[i];
-		heap[i] = heap[min];
-		heap[min] = tempEh;
+		// insert into the heap
+		if (i < heap.size())	heap.insert(heap.begin() + i, eh);
+		else heap.push_back(eh);
 	}
 }

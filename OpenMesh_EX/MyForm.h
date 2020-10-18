@@ -427,7 +427,7 @@ private: System::Void hkoglPanelControl1_Load(System::Object^  sender, System::E
 	glDepthFunc(GL_LEQUAL);
 	glEnable(GL_PROGRAM_POINT_SIZE);
 	glEnable(GL_COLOR_MATERIAL);
-	glPointSize(5);
+	glPointSize(10);
 
 	// init shader and model
 	shader = Shader("../Assets/shaders/vertex.vs.glsl", "../Assets/shaders/fragment.fs.glsl");
@@ -475,7 +475,9 @@ private: System::Void hkoglPanelControl1_KeyPress(System::Object^ sender, System
 
 	// debug part
 	if ((unsigned char)e->KeyChar == ' ' && meshPtr) {
+		cout << "Mesh Simplification called start\n";
 		meshPtr->SimplifyMesh(SimplificationMode::SmallestError, meshPtr->GetVerticesNumber() - 100);
+		cout << "Mesh Simplification called end\n";
 	}
 
 }

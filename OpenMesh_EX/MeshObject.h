@@ -97,7 +97,6 @@ private:
 	// rearrange the heap
 	void RearrangeHeap();
 
-
 	// debug purpose
 	void RecalculateCollapseVerticesToRender();
 	std::vector<MyMesh::VertexHandle> CollapseVerticesToRender;
