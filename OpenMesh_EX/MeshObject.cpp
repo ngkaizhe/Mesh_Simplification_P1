@@ -162,10 +162,7 @@ bool MeshObject::Init(std::string fileName)
 {
 	bool retV = model.Init(fileName);
 
-	// initial the quadric matrix for each vertex
-	for (MyMesh::VertexIter v_it = model.mesh.vertices_begin(); v_it != model.mesh.vertices_end(); v_it++) {
-		model.mesh.property(this->quadricMat, *v_it) = GetErrorQuadricMatrix(*v_it);
-	}
+	this->InitVerticesQuadratic();
 
 	// initial the cost of all edge handle
 	for (MyMesh::EdgeIter e_it = model.mesh.edges_begin(); e_it != model.mesh.edges_end(); e_it++) {
@@ -178,6 +175,49 @@ bool MeshObject::Init(std::string fileName)
 	CollapseRecalculated = false;
 
 	return retV;
+}
+
+void MeshObject::InitVerticesQuadratic() {
+	// initial the quadric matrix for each vertex to 0.0
+	for (MyMesh::VertexIter v_it = model.mesh.vertices_begin(); v_it != model.mesh.vertices_end(); v_it++) {
+		model.mesh.property(this->quadricMat, *v_it) = glm::mat4(0.0);
+	}
+
+	// initial the quadric matrix for each vertices
+	for (MyMesh::FaceIter f_it = model.mesh.faces_begin(); f_it != model.mesh.faces_end(); f_it++) {
+		MyMesh::FaceHandle fh = *f_it;
+		// run through each vertices the face have
+		glm::mat4 Kp = glm::mat4(0.0);
+		bool KpCalculated = false;
+		for (MyMesh::FVCWIter fv_it = model.mesh.fv_cwbegin(fh); fv_it != model.mesh.fv_cwend(fh); fv_it++) {
+			MyMesh::VertexHandle vh = *fv_it;
+
+			// the Kp of same planes should be same
+			if (!KpCalculated) {
+				KpCalculated = true;
+				// we need the plane equation of the face, 
+				// get the plane normal
+				// get the normal of face in the point form
+				MyMesh::Point nPF = model.mesh.normal(fh);
+				// convert the normal into glm form and normalized it
+				glm::vec3 n = glm::vec3(nPF[0], nPF[1], nPF[2]);
+				// n = <a, b, c> which a^2 + b^2 + c^2 = 1
+				n = glm::normalize(n);
+
+				// get the point which is on the plane(that is the center point)
+				// point = (x0, y0, z0)
+				MyMesh::Point vPF = model.mesh.point(vh);
+				// plane equation -> ax + by + cz - (ax0 + by0 + cz0) = 0
+				glm::vec4 p = glm::vec4(n[0], n[1], n[2], -(n[0] * vPF[0] + n[1] * vPF[1] + n[2] * vPF[2]));
+
+				// get the fundamental error quadric
+				Kp = glm::outerProduct(p, p);
+			}
+
+			// update each vertices' quadratic mat property
+			model.mesh.property(this->quadricMat, vh) += Kp;
+		}
+	}
 }
 
 void MeshObject::Render(Shader shader)
@@ -270,6 +310,7 @@ void MeshObject::SimplifyMesh(SimplificationMode mode, int vertices_left)
 				break;
 			}
 		}
+		std::cout << "Half edge handle find found!\n";
 
 		// get the 2 vertice handles of the edge handle
 		MyMesh::VertexHandle vh1 = model.mesh.to_vertex_handle(heh);
@@ -326,18 +367,22 @@ void MeshObject::SimplifyMesh(SimplificationMode mode, int vertices_left)
 		// set the vh1 quadratic matrix
 		model.mesh.property(this->quadricMat, vh1) = newQ;
 
+		std::cout << "QuadricMat for baseVH finished calculated!\n";
 		// recalculate the edge's cost around the vh1
 		for (MyMesh::VertexEdgeCWIter ve_it = model.mesh.ve_cwbegin(vh1); ve_it != model.mesh.ve_cwend(vh1); ve_it++) {
 			MyMesh::EdgeHandle eh = *ve_it;
 			this->SetCost(eh);
 		}
+		std::cout << "Edge handle around baseVH set cost done!\n";
 
 		// straight up called garbage collection
 		// to delete the edge and vertex we collapsed before
 		model.mesh.garbage_collection();
+		std::cout << "Garbage collection done!\n";
 
 		// rearrange our heap
 		this->RearrangeHeap();
+		std::cout << "Rearrange heap done!\n";
 
 		// need to recalculate the collapsed vertices again
 		CollapseRecalculated = false;

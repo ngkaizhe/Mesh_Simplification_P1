@@ -87,6 +87,7 @@ private:
 
 	GLMesh model;
 
+	void InitVerticesQuadratic();
 	// helper function
 	// get error quadratic matrix
 	glm::mat4 GetErrorQuadricMatrix(OpenMesh::VertexHandle vh);
