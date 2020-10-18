@@ -11,13 +11,6 @@
 #include "Shader.h"
 #include <vector>
 
-enum class SimplificationMode {
-	V1,
-	V2,
-	Middle,
-	SmallestError,
-};
-
 typedef OpenMesh::TriMesh_ArrayKernelT<>  TriMesh;
 
 class MyMesh : public TriMesh
@@ -49,6 +42,14 @@ private:
 	void LoadToShader();
 };
 
+// some extra enum and struct
+enum class SimplificationMode {
+	V1,
+	V2,
+	Middle,
+	SmallestError,
+};
+
 class MeshObject
 {
 public:
@@ -73,19 +74,22 @@ public:
 
 private:
 	// some added properties
-	OpenMesh::VPropHandleT<std::vector<VertexCost>> validVertices;
 	OpenMesh::VPropHandleT<glm::mat4> quadricMat;
+	OpenMesh::EPropHandleT<double> cost;
+
+	// heap with minimum cost in front
+	std::vector<OpenMesh::EdgeHandle> heap;
 
 	GLMesh model;
 
 	// helper function
 	// get error quadratic matrix
 	glm::mat4 GetErrorQuadricMatrix(OpenMesh::VertexHandle vh);
-	// recalculate the cost of vPair for the vertex handle
-	void RecalculateCost(OpenMesh::VertexHandle baseVh, OpenMesh::VertexHandle updatedVH= OpenMesh::VertexHandle());
 	// check whether the vertex pair is an concave edge
 	bool CheckConcave(OpenMesh::VertexHandle baseVH, OpenMesh::VertexHandle sideVH);
-	// get the cost of sideVH and baseVH
-	double GetCost(OpenMesh::VertexHandle baseVH, OpenMesh::VertexHandle sideVH);
+	// set cost of edge handle with property
+	void SetCost(MyMesh::EdgeHandle eh, SimplificationMode mode);
+	// rearrange the heap
+	void RearrangeHeap();
 };
 

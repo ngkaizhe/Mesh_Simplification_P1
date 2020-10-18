@@ -146,8 +146,8 @@ void GLMesh::LoadToShader()
 MeshObject::MeshObject()
 {
 	// add properties
-	model.mesh.add_property(this->validVertices);
 	model.mesh.add_property(this->quadricMat);
+	model.mesh.add_property(this->cost);
 }
 
 MeshObject::~MeshObject()
@@ -158,7 +158,7 @@ bool MeshObject::Init(std::string fileName)
 {
 	bool retV = model.Init(fileName);
 
-	// initial the error quadric matrix
+	// initial the quadric matrix for each vertex
 	for (MyMesh::VertexIter v_it = model.mesh.vertices_begin(); v_it != model.mesh.vertices_end(); v_it++) {
 		model.mesh.property(this->quadricMat, *v_it) = GetErrorQuadricMatrix(*v_it);
 	}
@@ -200,6 +200,15 @@ bool MeshObject::Init(std::string fileName)
 		// set the property values
 		model.mesh.property(this->validVertices, *v_it) = vertexCosts;
 	}
+
+	// initial the cost of all edge handle
+	for (MyMesh::EdgeIter e_it = model.mesh.edges_begin(); e_it != model.mesh.edges_end(); e_it++) {
+		this->SetCost(*e_it, SimplificationMode::SmallestError);
+		this->heap.push_back(*e_it);
+	}
+
+	// sort the heap
+	this->RearrangeHeap();
 
 	return retV;
 }
@@ -454,6 +463,93 @@ bool MeshObject::CheckConcave(OpenMesh::VertexHandle baseVH, OpenMesh::VertexHan
 {
 	return false;
 }
+
+void MeshObject::SetCost(MyMesh::EdgeHandle eh, SimplificationMode mode)
+{
+	double cost;
+	// find the halfEdge handle from the edge handle
+	MyMesh::HalfedgeHandle heh = model.mesh.halfedge_handle(eh, 0);
+	// get both vertices of the half edge
+	MyMesh::VertexHandle vh1 = model.mesh.to_vertex_handle(heh);
+	MyMesh::VertexHandle vh2 = model.mesh.from_vertex_handle(heh);
+	// find the Q(Q1 + Q2)
+	glm::mat4 newQ = model.mesh.property(this->quadricMat, vh1) + model.mesh.property(this->quadricMat, vh2);
+	glm::vec4 newV;
+
+	// find the collapse result(vertex position)
+	// choose the different mode
+	if (mode == SimplificationMode::SmallestError) {
+		// set the differential matrix
+		glm::mat4 differentialMat = newQ;
+		// set the last row to (0, 0, 0, 1)
+		glm::row(differentialMat, 3, glm::vec4(0, 0, 0, 1));
+
+		// if the differential matrix is invertible
+		if (glm::determinant(differentialMat) != 0) {
+			newV = glm::inverse(differentialMat) * glm::vec4(0, 0, 0, 1);
+		}
+		// else we just use the middle point
+		else {
+			MyMesh::Point p1 = model.mesh.point(vh1);
+			MyMesh::Point p2 = model.mesh.point(vh2);
+			MyMesh::Point newP = (p1 + p2) / 2.0f;
+			newV = glm::vec4(newP[0], newP[1], newP[2], 1);
+		}
+	}
+	// V = (V1 + V2) / 2
+	else if (mode == SimplificationMode::Middle) {
+		MyMesh::Point p1 = model.mesh.point(vh1);
+		MyMesh::Point p2 = model.mesh.point(vh2);
+		MyMesh::Point newP = (p1 + p2) / 2.0f;
+		newV = glm::vec4(newP[0], newP[1], newP[2], 1);
+	}
+	// V = V1 
+	else if (mode == SimplificationMode::V1) {
+		MyMesh::Point p1 = model.mesh.point(vh1);
+		newV = glm::vec4(p1[0], p1[1], p1[2], 1);
+	}
+	// V = V2
+	else if (mode == SimplificationMode::V2) {
+		MyMesh::Point p1 = model.mesh.point(vh2);
+		newV = glm::vec4(p1[0], p1[1], p1[2], 1);
+	}
+
+	// calculate the cost
+	// Cost/error value = (v(T) * M * v)
+	// as glm doesn't provide vector * matrix from the left
+	// so v(T) * M = (M(T) * v)(T) --> 1X4 vector
+	// 1X4 vector * 4X1 vector = dot product
+	cost = glm::dot(glm::transpose(newQ) * newV, newV);
+	
+	// set the cost of the edge
+	model.mesh.property(this->cost, eh) = cost;
+}
+
+void MeshObject::RearrangeHeap()
+{
+	MyMesh::EdgeHandle tempEh;
+	int min;
+
+	// selection sort
+	// sort the heap cost array
+	// the minimum will be the front
+	for (int i = 0; i < heap.size() - 1; i++) {
+		min = i;
+		for (int j = i + 1; j < heap.size(); j++) {
+			// exchange the index
+			if (heap[j] < heap[min]) {
+				min = j;
+			}
+		}
+
+		// exchange the heap[i] and heap[min]
+		tempEh = heap[i];
+		heap[i] = heap[min];
+		heap[min] = tempEh;
+	}
+}
+
+
 
 
 
