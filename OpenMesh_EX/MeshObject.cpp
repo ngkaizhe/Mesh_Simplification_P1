@@ -191,9 +191,9 @@ void MeshObject::InitModels() {
 		models.push_back(model);
 
 		// for each rate we wish to decrease the original model
+		std::cout << "Model Simplification Rate " << i << "% Start\n";
 		this->SimplifyMesh(SimplificationMode::SmallestError, this->GetEdgesNumber() - (edgeDiff / 100));
-
-		std::cout << "Model Simplification Rate " << i << "% Done\n";
+		std::cout << "Model Simplification Rate " << i << "% Done\n\n";
 	}
 }
 
@@ -336,23 +336,19 @@ void MeshObject::SimplifyMesh(SimplificationMode mode, int edgesLeft)
 		std::cout << "\n\n============\n";
 		std::cout << "Current Edge left = " << model.mesh.n_edges() << '\n';
 		std::cout << "Target Edge left = " << edgesLeft << '\n';
-		std::cout << "\n============\n";
+		std::cout << "============\n";
 		// for each edge collapse
 		// might let our edge decreased by 3
 		// get the edge handle from the first element of heap
 		MyMesh::HalfedgeHandle heh;
 		// as we update our heap only after the while loop finished
-		for (; heapID < heap.size(); heapID++) {
+		for (heapID = 0; heapID < heap.size(); heapID++) {
 			// we dont collapse the concave edge
-			// we might need to check whether heap[i] out of bound or not
-			if (heap[heapID]._idx < model.mesh.n_edges()) {
-				MyMesh::EdgeHandle eh = model.mesh.edge_handle(heap[heapID]._idx);
-				if (!this->CheckConcave(eh)) {
-					heh = model.mesh.halfedge_handle(eh, 0);
-					break;
-				}
+			MyMesh::EdgeHandle eh = model.mesh.edge_handle(heap[heapID]._idx);
+			if (!this->CheckConcave(eh)) {
+				heh = model.mesh.halfedge_handle(eh, 0);
+				break;
 			}
-			
 		}
 
 		// get the 2 vertice handles of the edge handle
@@ -403,6 +399,11 @@ void MeshObject::SimplifyMesh(SimplificationMode mode, int edgesLeft)
 			newV = glm::vec4(p1[0], p1[1], p1[2], 1);
 		}
 
+		if (!model.mesh.is_collapse_ok(heh)) {
+			MyMesh::EdgeHandle eh = model.mesh.edge_handle(heh);
+			std::cout << "Edge handle with Id => " << eh.idx() << " is not collapsed ok! Please dont collapse this edge handle\n";
+		}
+
 		// collapse the halfedge (vh2 -> vh1)
 		model.mesh.collapse(heh);
 		// set the new vertex point
@@ -416,16 +417,26 @@ void MeshObject::SimplifyMesh(SimplificationMode mode, int edgesLeft)
 			this->SetCost(eh);
 		}
 
+		for (MyMesh::EdgeIter e_it = model.mesh.edges_begin(); e_it != model.mesh.edges_end(); e_it++) {
+			if (!model.mesh.is_valid_handle(*e_it)) {
+				std::cout << "Edge handle with Id => " << e_it->idx() << " is not a valid handle!\n";
+			}
+			if (model.mesh.status(*e_it).deleted()) {
+				std::cout << "Edge handle with Id => " << e_it->idx() << " has been deleted!\n";
+			}
+		}
+
 		// straight up called garbage collection
 		// to delete the edge and vertex we collapsed before
 		model.mesh.garbage_collection();
 
 		// need to recalculate the collapsed vertices again
 		CollapseRecalculated = false;
+
+		// we rearrange our heap after each rate
+		this->RearrangeHeap();
 	}
 
-	// we rearrange our heap after each rate
-	this->RearrangeHeap();
 
 }
 
