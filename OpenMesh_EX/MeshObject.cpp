@@ -290,8 +290,9 @@ void MeshObject::RecalculateCollapseVerticesToRender() {
 	MyMesh::HalfedgeHandle heh;
 	for (int i = 0; i < heap.size(); i++) {
 		// we dont collapse the concave edge
-		if (!this->CheckConcave(heap[i])) {
-			heh = model.mesh.halfedge_handle(heap[i], 0);
+		MyMesh::EdgeHandle eh = model.mesh.edge_handle(heap[i]._idx);
+		if (!this->CheckConcave(eh)) {
+			heh = model.mesh.halfedge_handle(eh, 0);
 			break;
 		}
 	}
@@ -344,10 +345,14 @@ void MeshObject::SimplifyMesh(SimplificationMode mode, int edgesLeft)
 		for (; heapID < heap.size(); heapID++) {
 			// we dont collapse the concave edge
 			// we might need to check whether heap[i] out of bound or not
-			if (!this->CheckConcave(heap[heapID]) && heap[heapID].idx() < model.mesh.n_edges()) {
-				heh = model.mesh.halfedge_handle(heap[heapID], 0);
-				break;
+			if (heap[heapID]._idx < model.mesh.n_edges()) {
+				MyMesh::EdgeHandle eh = model.mesh.edge_handle(heap[heapID]._idx);
+				if (!this->CheckConcave(eh)) {
+					heh = model.mesh.halfedge_handle(eh, 0);
+					break;
+				}
 			}
+			
 		}
 
 		// get the 2 vertice handles of the edge handle
@@ -512,18 +517,15 @@ void MeshObject::RearrangeHeap()
 	// repush our edge handle into heap
 	for (MyMesh::EdgeIter e_it = model.mesh.edges_begin(); e_it != model.mesh.edges_end(); e_it++) {
 		MyMesh::EdgeHandle eh = *e_it;
+		MeshObject::EdgeInfo edgeInfo;
+		edgeInfo._idx = e_it->idx();
+		edgeInfo.cost = model.mesh.property(this->cost, *e_it);
 
 		// sort in the process of pushing
-		int i;
-		for (i = 0; i < heap.size(); i++) {
-			if (model.mesh.property(this->cost, heap[i]) > model.mesh.property(this->cost, eh)) {
-				i--;
-				break;
-			}
-		}
-
-		// insert into the heap
-		if (i < heap.size())	heap.insert(heap.begin() + i, eh);
-		else heap.push_back(eh);
+		heap.push_back(edgeInfo);
 	}
+
+	std::sort(heap.begin(), heap.end(), [](MeshObject::EdgeInfo ei1, MeshObject::EdgeInfo ei2) {
+		return ei1.cost < ei2.cost;
+	});
 }

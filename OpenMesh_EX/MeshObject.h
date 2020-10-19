@@ -53,6 +53,10 @@ enum class SimplificationMode {
 class MeshObject
 {
 public:
+	struct EdgeInfo {
+		int _idx;
+		double cost;
+	};
 
 	MeshObject();
 	~MeshObject();
@@ -76,7 +80,7 @@ private:
 	OpenMesh::EPropHandleT<double> cost;
 
 	// heap with minimum cost in front
-	std::vector<OpenMesh::EdgeHandle> heap;
+	std::vector<EdgeInfo> heap;
 
 	// the original model
 	GLMesh model;
