@@ -36,10 +36,10 @@ public:
 	GLuint ebo;
 	GLuint vboVertices, vboNormal;
 
-private:
-
-	bool LoadModel(std::string fileName);
 	void LoadToShader();
+
+private:
+	bool LoadModel(std::string fileName);
 };
 
 // some extra enum and struct

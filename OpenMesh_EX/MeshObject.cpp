@@ -166,17 +166,35 @@ bool MeshObject::Init(std::string fileName)
 
 	// sort the heap
 	this->RearrangeHeap();
+	std::cout << "Init finish arrange heap\n";
 
 	CollapseRecalculated = false;
 
 	// start to initial the models
 	this->InitModels();
+	this->currentIDToRender = -1;
+	this->SetRate(0);
 
 	return retV;
 }
 
 void MeshObject::InitModels() {
+	models.reserve(100);
 
+	int lowestPercentage = 20;
+	int lowestEdgeNumber = lowestPercentage / 100.0 * this->GetEdgesNumber();
+	int highestEdgeNumber = this->GetEdgesNumber();
+	int edgeDiff = highestEdgeNumber - lowestEdgeNumber;
+
+	for (int i = 0; i < 100; i++) {
+		// save the initial state first
+		models.push_back(model);
+
+		// for each rate we wish to decrease the original model
+		this->SimplifyMesh(SimplificationMode::SmallestError, this->GetEdgesNumber() - (edgeDiff / 100));
+
+		std::cout << "Model Simplification Rate " << i << "% Done\n";
+	}
 }
 
 void MeshObject::InitVerticesQuadratic() {
@@ -293,6 +311,7 @@ void MeshObject::SetRate(int rate) {
 	if (rate != this->currentIDToRender) {
 		this->currentIDToRender = rate;
 		this->modelToRender = &models[this->currentIDToRender];
+		this->modelToRender->LoadToShader();
 	}
 }
 
@@ -308,18 +327,25 @@ int MeshObject::GetFacesNumber() {
 return model.mesh.n_faces();
 }
 
-void MeshObject::SimplifyMesh(SimplificationMode mode, int vertices_left)
+void MeshObject::SimplifyMesh(SimplificationMode mode, int edgesLeft)
 {
-	// recheck whether the we reached the total vertices should be
-	while (model.mesh.n_vertices() > vertices_left) {
+	int heapID = 0;
+	// recheck whether the we reached the total edges number should be
+	while (model.mesh.n_edges() > edgesLeft) {
+		std::cout << "\n\n============\n";
+		std::cout << "Current Edge left = " << model.mesh.n_edges() << '\n';
+		std::cout << "Target Edge left = " << edgesLeft << '\n';
+		std::cout << "\n============\n";
 		// for each edge collapse
 		// might let our edge decreased by 3
 		// get the edge handle from the first element of heap
 		MyMesh::HalfedgeHandle heh;
-		for (int i = 0; i < heap.size(); i++) {
+		// as we update our heap only after the while loop finished
+		for (; heapID < heap.size(); heapID++) {
 			// we dont collapse the concave edge
-			if (!this->CheckConcave(heap[i])) {
-				heh = model.mesh.halfedge_handle(heap[i], 0);
+			// we might need to check whether heap[i] out of bound or not
+			if (!this->CheckConcave(heap[heapID]) && heap[heapID].idx() < model.mesh.n_edges()) {
+				heh = model.mesh.halfedge_handle(heap[heapID], 0);
 				break;
 			}
 		}
@@ -389,12 +415,12 @@ void MeshObject::SimplifyMesh(SimplificationMode mode, int vertices_left)
 		// to delete the edge and vertex we collapsed before
 		model.mesh.garbage_collection();
 
-		// rearrange our heap
-		this->RearrangeHeap();
-
 		// need to recalculate the collapsed vertices again
 		CollapseRecalculated = false;
 	}
+
+	// we rearrange our heap after each rate
+	this->RearrangeHeap();
 
 }
 
