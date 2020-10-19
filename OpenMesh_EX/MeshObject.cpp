@@ -436,37 +436,6 @@ void MeshObject::SimplifyMesh(SimplificationMode mode, int edgesLeft)
 		// we rearrange our heap after each rate
 		this->RearrangeHeap();
 	}
-
-
-}
-
-glm::mat4 MeshObject::GetErrorQuadricMatrix(OpenMesh::VertexHandle vh)
-{
-	// the summation fundamental error quadric
-	glm::mat4 Kps = glm::mat4(0.0);
-	for (MyMesh::VFIter vf_it = model.mesh.vf_begin(vh); vf_it != model.mesh.vf_end(vh); vf_it++) {
-		// we need the plane equation of the face, 
-		// get the plane normal
-		// get the normal of face in the point form
-		MyMesh::Point nPF = model.mesh.normal(*vf_it);
-		// convert the normal into glm form and normalized it
-		glm::vec3 n = glm::vec3(nPF[0], nPF[1], nPF[2]);
-		// n = <a, b, c> which a^2 + b^2 + c^2 = 1
-		n = glm::normalize(n);
-
-		// get the point which is on the plane(that is the center point)
-		// point = (x0, y0, z0)
-		MyMesh::Point vPF = model.mesh.point(vh);
-		// plane equation -> ax + by + cz - (ax0 + by0 + cz0) = 0
-		glm::vec4 p = glm::vec4(n[0], n[1], n[2], -(n[0] * vPF[0] + n[1] * vPF[1] + n[2] * vPF[2]));
-
-		// get the fundamental error quadric
-		glm::mat4 Kp = glm::outerProduct(p, p);
-		Kps += Kp;
-	}
-
-	// return the error quadric
-	return Kps;
 }
 
 bool MeshObject::CheckConcave(OpenMesh::EdgeHandle eh)

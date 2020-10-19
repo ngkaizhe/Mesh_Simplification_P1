@@ -99,8 +99,6 @@ private:
 	void InitModels();
 	// init vertices quadratic property
 	void InitVerticesQuadratic();
-	// get error quadratic matrix
-	glm::mat4 GetErrorQuadricMatrix(OpenMesh::VertexHandle vh);
 	// check whether the edge is an concave edge
 	bool CheckConcave(OpenMesh::EdgeHandle eh);
 	// set cost of edge handle with property
