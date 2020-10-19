@@ -36,8 +36,6 @@ public:
 	GLuint ebo;
 	GLuint vboVertices, vboNormal;
 
-	void ReLoadToShader();
-
 private:
 
 	bool LoadModel(std::string fileName);
@@ -55,10 +53,6 @@ enum class SimplificationMode {
 class MeshObject
 {
 public:
-	struct VertexCost {
-		double cost;
-		OpenMesh::VertexHandle vh;
-	};
 
 	MeshObject();
 	~MeshObject();
@@ -74,8 +68,7 @@ public:
 	int GetEdgesNumber();
 	int GetFacesNumber();
 
-	// decrease the vertex number
-	void SimplifyMesh(SimplificationMode mode, int vertices_left);
+	void SetRate(int rate);
 
 private:
 	// some added properties
@@ -85,10 +78,23 @@ private:
 	// heap with minimum cost in front
 	std::vector<OpenMesh::EdgeHandle> heap;
 
+	// the original model
 	GLMesh model;
+	// the model to be save in all rate
+	std::vector<GLMesh> models;
+	// the current model to be render
+	GLMesh* modelToRender;
+	// mesh simplify rate(id)
+	int currentIDToRender;
 
+	// decrease the vertex number
+	void SimplifyMesh(SimplificationMode mode, int vertices_left);
+
+	// helper function for init
+	// init all simplification rate models
+	void InitModels();
+	// init vertices quadratic property
 	void InitVerticesQuadratic();
-	// helper function
 	// get error quadratic matrix
 	glm::mat4 GetErrorQuadricMatrix(OpenMesh::VertexHandle vh);
 	// check whether the edge is an concave edge

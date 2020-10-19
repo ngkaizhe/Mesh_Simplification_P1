@@ -70,7 +70,6 @@ void GLMesh::Render()
 	glBindVertexArray(0);
 }
 
-
 bool GLMesh::LoadModel(std::string fileName)
 {
 	OpenMesh::IO::Options ropt;
@@ -141,10 +140,6 @@ void GLMesh::LoadToShader()
 	glBindVertexArray(0);
 }
 
-void GLMesh::ReLoadToShader() {
-	LoadToShader();
-}
-
 #pragma endregion
 
 MeshObject::MeshObject()
@@ -174,7 +169,14 @@ bool MeshObject::Init(std::string fileName)
 
 	CollapseRecalculated = false;
 
+	// start to initial the models
+	this->InitModels();
+
 	return retV;
+}
+
+void MeshObject::InitModels() {
+
 }
 
 void MeshObject::InitVerticesQuadratic() {
@@ -224,8 +226,9 @@ void MeshObject::Render(Shader shader)
 {
 	shader.use();
 
-	glBindVertexArray(model.vao);
-	glDrawElements(GL_TRIANGLES, model.mesh.n_faces() * 3, GL_UNSIGNED_INT, 0);
+	// render the current rate to use
+	glBindVertexArray(this->modelToRender->vao);
+	glDrawElements(GL_TRIANGLES, this->modelToRender->mesh.n_faces() * 3, GL_UNSIGNED_INT, 0);
 	glBindVertexArray(0);
 }
 
@@ -237,6 +240,7 @@ void MeshObject::RenderPoint(Shader shader) {
 	glBindVertexArray(0);
 }
 
+// debug used
 void MeshObject::DebugRender(Shader shader) {
 	if(!CollapseRecalculated)	this->RecalculateCollapseVerticesToRender();
 	shader.use();
@@ -258,6 +262,7 @@ void MeshObject::DebugRender(Shader shader) {
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
+// debug used
 void MeshObject::RecalculateCollapseVerticesToRender() {
 	CollapseVerticesToRender.clear();
 
@@ -281,6 +286,14 @@ void MeshObject::RecalculateCollapseVerticesToRender() {
 	}
 
 	CollapseRecalculated = true;
+}
+
+void MeshObject::SetRate(int rate) {
+	// if the rate is different to our current rate change the pointer then
+	if (rate != this->currentIDToRender) {
+		this->currentIDToRender = rate;
+		this->modelToRender = &models[this->currentIDToRender];
+	}
 }
 
 int MeshObject::GetVerticesNumber() {
@@ -310,7 +323,6 @@ void MeshObject::SimplifyMesh(SimplificationMode mode, int vertices_left)
 				break;
 			}
 		}
-		std::cout << "Half edge handle find found!\n";
 
 		// get the 2 vertice handles of the edge handle
 		MyMesh::VertexHandle vh1 = model.mesh.to_vertex_handle(heh);
@@ -367,30 +379,23 @@ void MeshObject::SimplifyMesh(SimplificationMode mode, int vertices_left)
 		// set the vh1 quadratic matrix
 		model.mesh.property(this->quadricMat, vh1) = newQ;
 
-		std::cout << "QuadricMat for baseVH finished calculated!\n";
 		// recalculate the edge's cost around the vh1
 		for (MyMesh::VertexEdgeCWIter ve_it = model.mesh.ve_cwbegin(vh1); ve_it != model.mesh.ve_cwend(vh1); ve_it++) {
 			MyMesh::EdgeHandle eh = *ve_it;
 			this->SetCost(eh);
 		}
-		std::cout << "Edge handle around baseVH set cost done!\n";
 
 		// straight up called garbage collection
 		// to delete the edge and vertex we collapsed before
 		model.mesh.garbage_collection();
-		std::cout << "Garbage collection done!\n";
 
 		// rearrange our heap
 		this->RearrangeHeap();
-		std::cout << "Rearrange heap done!\n";
 
 		// need to recalculate the collapsed vertices again
 		CollapseRecalculated = false;
 	}
 
-	// finish calling simplify mesh
-	// we reload our vao and vbo
-	model.ReLoadToShader();
 }
 
 glm::mat4 MeshObject::GetErrorQuadricMatrix(OpenMesh::VertexHandle vh)
