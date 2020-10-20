@@ -338,7 +338,7 @@ int MeshObject::GetFacesNumber() {
 
 void MeshObject::SimplifyMesh(SimplificationMode mode, int edgesLeft, int simplifiedRate)
 {
-	//fileToWrite << "Simplified Rate => " << simplifiedRate << "\n";
+	fileToWrite << "Simplified Rate => " << simplifiedRate << "\n";
 
 	int heapID = 0;
 	// recheck whether the we reached the total edges number should be
@@ -415,7 +415,7 @@ void MeshObject::SimplifyMesh(SimplificationMode mode, int edgesLeft, int simpli
 
 		// add log message to the file
 		MyMesh::EdgeHandle eh = model.mesh.edge_handle(heap[heapID]._idx);
-		//fileToWrite << "Edge handle with Id => " << eh.idx() << "has been chosen to collapse!\n";
+		fileToWrite << "Edge handle with Id => " << eh.idx() << " has been chosen to collapse!\n";
 
 		// collapse the halfedge (vh2 -> vh1)
 		model.mesh.collapse(heh);
@@ -450,13 +450,13 @@ void MeshObject::SimplifyMesh(SimplificationMode mode, int edgesLeft, int simpli
 		CollapseRecalculated = false;
 	}
 
-	//fileToWrite << "\n";
+	fileToWrite << "\n";
 }
 
 bool MeshObject::CheckOk(OpenMesh::EdgeHandle eh)
 {
 	MyMesh::HalfedgeHandle heh = model.mesh.halfedge_handle(eh, 0);
-	return model.mesh.is_collapse_ok(heh);
+	return model.mesh.is_collapse_ok(heh) && !model.mesh.is_boundary(eh);
 }
 
 void MeshObject::SetCost(MyMesh::EdgeHandle eh)
