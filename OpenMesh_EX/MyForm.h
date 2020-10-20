@@ -528,13 +528,13 @@ private: System::Void hkoglPanelControl1_KeyPress(System::Object^ sender, System
 	m_camera.keyEvents((unsigned char)e->KeyChar);
 	printf("Key %c is pressed\n", e->KeyChar);
 
-	if ((unsigned char)e->KeyChar == 'a') {
-		rate -= 1;
-		if(rate >= 0)	meshObjectPtr->SetRate(rate);
+	if ((unsigned char)e->KeyChar == '1') {
+		if (rate > 0) rate -= 1;
+		meshObjectPtr->SetRate(rate);
 	}
-	else if ((unsigned char)e->KeyChar == 'd') {
-		rate += 1;
-		if (rate >= 0)	meshObjectPtr->SetRate(rate);
+	else if ((unsigned char)e->KeyChar == '2') {
+		if(rate < 99) rate += 1;
+		meshObjectPtr->SetRate(rate);
 	}
 
 	// update the label

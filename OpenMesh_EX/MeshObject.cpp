@@ -170,10 +170,18 @@ bool MeshObject::Init(std::string fileName)
 
 	CollapseRecalculated = false;
 
+	// init our file ofstream
+	fileToWrite = std::ofstream("C:/Users/ngkaizhe/Desktop/OpenMesh_EX/Assets/Temp/temp1.txt");
+
+	// init modelToRender
+	this->modelToRender = &model;
+
 	// start to initial the models
 	this->InitModels();
 	this->currentIDToRender = -1;
 	this->SetRate(0);
+
+	fileToWrite.close();
 
 	return retV;
 }
@@ -182,8 +190,8 @@ void MeshObject::InitModels() {
 	models.reserve(100);
 
 	int lowestPercentage = 20;
-	int lowestEdgeNumber = lowestPercentage / 100.0 * this->GetEdgesNumber();
-	int highestEdgeNumber = this->GetEdgesNumber();
+	int lowestEdgeNumber = lowestPercentage / 100.0 * this->model.mesh.n_edges();
+	int highestEdgeNumber = this->model.mesh.n_edges();
 	int edgeDiff = highestEdgeNumber - lowestEdgeNumber;
 
 	for (int i = 0; i < 100; i++) {
@@ -192,7 +200,7 @@ void MeshObject::InitModels() {
 
 		// for each rate we wish to decrease the original model
 		std::cout << "Model Simplification Rate " << i << "% Start\n";
-		this->SimplifyMesh(SimplificationMode::SmallestError, this->GetEdgesNumber() - (edgeDiff / 100));
+		this->SimplifyMesh(SimplificationMode::SmallestError, this->model.mesh.n_edges() - (edgeDiff / 100), i);
 		std::cout << "Model Simplification Rate " << i << "% Done\n\n";
 	}
 }
@@ -291,7 +299,7 @@ void MeshObject::RecalculateCollapseVerticesToRender() {
 	for (int i = 0; i < heap.size(); i++) {
 		// we dont collapse the concave edge
 		MyMesh::EdgeHandle eh = model.mesh.edge_handle(heap[i]._idx);
-		if (!this->CheckConcave(eh)) {
+		if (!this->CheckOk(eh)) {
 			heh = model.mesh.halfedge_handle(eh, 0);
 			break;
 		}
@@ -317,37 +325,43 @@ void MeshObject::SetRate(int rate) {
 }
 
 int MeshObject::GetVerticesNumber() {
-	return model.mesh.n_vertices();
+	return modelToRender->mesh.n_vertices();
 }
 
 int MeshObject::GetEdgesNumber() {
-	return model.mesh.n_edges();
+	return modelToRender->mesh.n_edges();
 }
 
 int MeshObject::GetFacesNumber() {
-return model.mesh.n_faces();
+	return modelToRender->mesh.n_faces();
 }
 
-void MeshObject::SimplifyMesh(SimplificationMode mode, int edgesLeft)
+void MeshObject::SimplifyMesh(SimplificationMode mode, int edgesLeft, int simplifiedRate)
 {
+	//fileToWrite << "Simplified Rate => " << simplifiedRate << "\n";
+
 	int heapID = 0;
 	// recheck whether the we reached the total edges number should be
 	while (model.mesh.n_edges() > edgesLeft) {
-		std::cout << "\n\n============\n";
+		/*std::cout << "\n\n============\n";
 		std::cout << "Current Edge left = " << model.mesh.n_edges() << '\n';
 		std::cout << "Target Edge left = " << edgesLeft << '\n';
-		std::cout << "============\n";
+		std::cout << "============\n";*/
+
 		// for each edge collapse
 		// might let our edge decreased by 3
 		// get the edge handle from the first element of heap
 		MyMesh::HalfedgeHandle heh;
 		// as we update our heap only after the while loop finished
 		for (heapID = 0; heapID < heap.size(); heapID++) {
-			// we dont collapse the concave edge
 			MyMesh::EdgeHandle eh = model.mesh.edge_handle(heap[heapID]._idx);
-			if (!this->CheckConcave(eh)) {
-				heh = model.mesh.halfedge_handle(eh, 0);
-				break;
+			// as we dont do garbage collection every loop, 
+			// so we need to check whether the first position of heap can be used or not
+			if (!model.mesh.status(eh).deleted()) {
+				if (this->CheckOk(eh)) {
+					heh = model.mesh.halfedge_handle(eh, 0);
+					break;
+				}
 			}
 		}
 
@@ -399,10 +413,9 @@ void MeshObject::SimplifyMesh(SimplificationMode mode, int edgesLeft)
 			newV = glm::vec4(p1[0], p1[1], p1[2], 1);
 		}
 
-		if (!model.mesh.is_collapse_ok(heh)) {
-			MyMesh::EdgeHandle eh = model.mesh.edge_handle(heh);
-			std::cout << "Edge handle with Id => " << eh.idx() << " is not collapsed ok! Please dont collapse this edge handle\n";
-		}
+		// add log message to the file
+		MyMesh::EdgeHandle eh = model.mesh.edge_handle(heap[heapID]._idx);
+		//fileToWrite << "Edge handle with Id => " << eh.idx() << "has been chosen to collapse!\n";
 
 		// collapse the halfedge (vh2 -> vh1)
 		model.mesh.collapse(heh);
@@ -417,30 +430,33 @@ void MeshObject::SimplifyMesh(SimplificationMode mode, int edgesLeft)
 			this->SetCost(eh);
 		}
 
-		for (MyMesh::EdgeIter e_it = model.mesh.edges_begin(); e_it != model.mesh.edges_end(); e_it++) {
+		/*for (MyMesh::EdgeIter e_it = model.mesh.edges_begin(); e_it != model.mesh.edges_end(); e_it++) {
 			if (!model.mesh.is_valid_handle(*e_it)) {
 				std::cout << "Edge handle with Id => " << e_it->idx() << " is not a valid handle!\n";
 			}
 			if (model.mesh.status(*e_it).deleted()) {
 				std::cout << "Edge handle with Id => " << e_it->idx() << " has been deleted!\n";
 			}
-		}
+		}*/
 
 		// straight up called garbage collection
 		// to delete the edge and vertex we collapsed before
 		model.mesh.garbage_collection();
 
-		// need to recalculate the collapsed vertices again
-		CollapseRecalculated = false;
-
 		// we rearrange our heap after each rate
 		this->RearrangeHeap();
+
+		// need to recalculate the collapsed vertices again
+		CollapseRecalculated = false;
 	}
+
+	//fileToWrite << "\n";
 }
 
-bool MeshObject::CheckConcave(OpenMesh::EdgeHandle eh)
+bool MeshObject::CheckOk(OpenMesh::EdgeHandle eh)
 {
-	return false;
+	MyMesh::HalfedgeHandle heh = model.mesh.halfedge_handle(eh, 0);
+	return model.mesh.is_collapse_ok(heh);
 }
 
 void MeshObject::SetCost(MyMesh::EdgeHandle eh)
@@ -460,7 +476,7 @@ void MeshObject::SetCost(MyMesh::EdgeHandle eh)
 	// set the differential matrix
 	glm::mat4 differentialMat = newQ;
 	// set the last row to (0, 0, 0, 1)
-	glm::row(differentialMat, 3, glm::vec4(0, 0, 0, 1));
+	differentialMat = glm::row(differentialMat, 3, glm::vec4(0, 0, 0, 1));
 
 	// if the differential matrix is invertible
 	if (glm::determinant(differentialMat) != 0) {
@@ -480,6 +496,12 @@ void MeshObject::SetCost(MyMesh::EdgeHandle eh)
 	// so v(T) * M = (M(T) * v)(T) --> 1X4 vector
 	// 1X4 vector * 4X1 vector = dot product
 	cost = glm::dot(glm::transpose(newQ) * newV, newV);
+
+	float x = newV.x;
+	float y = newV.y;
+	float z = newV.z;
+	double cost2 = (newQ[0][0] * x * x) + (2 * newQ[0][1] * x * y) + (2 * newQ[0][2] * x * z) + (2 * newQ[0][3] * x) + (newQ[1][1] * y * y) +
+		(2 * newQ[1][2] * y * z) + (2 * newQ[1][3] * y) + (newQ[2][2] * z * z) + (2 * newQ[2][3] * z) + (newQ[3][3]);
 	
 	// set the cost of the edge
 	model.mesh.property(this->cost, eh) = cost;

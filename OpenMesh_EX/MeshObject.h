@@ -10,6 +10,7 @@
 #include<Eigen/Sparse>
 #include "Shader.h"
 #include <vector>
+#include <fstream>
 
 typedef OpenMesh::TriMesh_ArrayKernelT<>  TriMesh;
 
@@ -91,8 +92,11 @@ private:
 	// mesh simplify rate(id)
 	int currentIDToRender;
 
+	// file ofstream
+	std::ofstream fileToWrite;
+
 	// decrease the vertex number
-	void SimplifyMesh(SimplificationMode mode, int vertices_left);
+	void SimplifyMesh(SimplificationMode mode, int vertices_left, int simplifyRate);
 
 	// helper function for init
 	// init all simplification rate models
@@ -100,7 +104,7 @@ private:
 	// init vertices quadratic property
 	void InitVerticesQuadratic();
 	// check whether the edge is an concave edge
-	bool CheckConcave(OpenMesh::EdgeHandle eh);
+	bool CheckOk(OpenMesh::EdgeHandle eh);
 	// set cost of edge handle with property
 	void SetCost(MyMesh::EdgeHandle eh);
 	// rearrange the heap
