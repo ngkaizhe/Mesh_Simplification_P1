@@ -190,9 +190,9 @@ void MeshObject::InitModels() {
 	models.reserve(100);
 
 	int lowestPercentage = 1;
-	int lowestEdgeNumber = lowestPercentage / 100.0 * this->model.mesh.n_edges();
-	int highestEdgeNumber = this->model.mesh.n_edges();
-	int edgeDiff = highestEdgeNumber - lowestEdgeNumber;
+	int lowestFaceNumber = lowestPercentage / 100.0 * this->model.mesh.n_faces();
+	int highestFaceNumber = this->model.mesh.n_faces();
+	int faceDiff = highestFaceNumber - lowestFaceNumber;
 
 	for (int i = 0; i < 100; i++) {
 		// save the initial state first
@@ -200,7 +200,7 @@ void MeshObject::InitModels() {
 
 		// for each rate we wish to decrease the original model
 		std::cout << "Model Simplification Rate " << i << "% Start\n";
-		this->SimplifyMesh(SimplificationMode::SmallestError, this->model.mesh.n_edges() - (edgeDiff / 100), i);
+		this->SimplifyMesh(SimplificationMode::SmallestError, this->model.mesh.n_faces() - (faceDiff / 100), i);
 		std::cout << "Model Simplification Rate " << i << "% Done\n\n";
 	}
 }
@@ -336,14 +336,14 @@ int MeshObject::GetFacesNumber() {
 	return modelToRender->mesh.n_faces();
 }
 
-void MeshObject::SimplifyMesh(SimplificationMode mode, int edgesLeft, int simplifiedRate)
+void MeshObject::SimplifyMesh(SimplificationMode mode, int faceLeft, int simplifiedRate)
 {
 	// fileToWrite << "Simplified Rate => " << simplifiedRate << "\n";
 
 	int heapID = 0;
 	// recheck whether the we reached the total edges number should be
 	//while(model.mesh.n_edges() > edgesLeft) {
-	while (this->GetUndeletedEdgesNumber() > edgesLeft) {
+	while (this->GetUndeletedFacesNumber() > faceLeft) {
 		/*std::cout << "\n\n============\n";
 		std::cout << "Current Edge left = " << model.mesh.n_edges() << '\n';
 		std::cout << "Target Edge left = " << edgesLeft << '\n';
@@ -443,21 +443,23 @@ void MeshObject::SimplifyMesh(SimplificationMode mode, int edgesLeft, int simpli
 
 		// we use lazy deletion
 		// for not resorting our heap each time we deleted 1 edge
+
+		// straight up called garbage collection
+		// to delete the edge and vertex we collapsed before
+		model.mesh.garbage_collection();
+
+		// we rearrange our heap after each rate
+		this->RearrangeHeap();
 	}
 
-	// straight up called garbage collection
-		// to delete the edge and vertex we collapsed before
-	model.mesh.garbage_collection();
-
-	// we rearrange our heap after each rate
-	this->RearrangeHeap();
+	
 
 	// fileToWrite << "\n";
 }
 
-int MeshObject::GetUndeletedEdgesNumber() {
+int MeshObject::GetUndeletedFacesNumber() {
 	int i = 0;
-	for (MyMesh::EdgeIter e_it = model.mesh.edges_sbegin(); e_it != model.mesh.edges_end(); e_it++) {
+	for (MyMesh::FaceIter f_it = model.mesh.faces_sbegin(); f_it != model.mesh.faces_end(); f_it++) {
 		i++;
 	}
 	return i;

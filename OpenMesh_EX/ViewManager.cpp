@@ -12,7 +12,7 @@ vec3 getVec3(vec4 temp) {
 ViewManager::ViewManager()
 {
 	ortho = false;
-	zoom = 1.0f;
+	zoom = 100.0f;
 	moveSpeed = 5.0f;
 	lmbDown = false;
 	midDown = false;
@@ -252,7 +252,7 @@ void ViewManager::mouseMoveEvent(int x, int y)
 		vec3 diffUp = getVec3(up) * diff.y / (float)w_height;
 		vec3 diffRight = getVec3(right) * diff.x / (float)w_width;
 
-		translationMatrix = translate(translationMatrix, (-diffUp + diffRight) * zoom * 0.1f);
+		translationMatrix = translate(translationMatrix, (-diffUp + diffRight) * zoom * 1.0f);
 		midDownCoord = coord;
 	}
 }
