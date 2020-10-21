@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Matrix4d xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Element>
+    <double>0.91952701850170848</double>
+    <double>-0.023865949905099097</double>
+    <double>0.19413526249968316</double>
+    <double>-0.0054288816503800241</double>
+    <double>0.034716470243202943</double>
+    <double>0.93817474217186936</double>
+    <double>-0.049101337150162</double>
+    <double>-0.011943539630836053</double>
+    <double>-0.192491169679408</double>
+    <double>0.055195933285056835</double>
+    <double>0.91852522012712245</double>
+    <double>0</double>
+    <double>0</double>
+    <double>0</double>
+    <double>0</double>
+    <double>1</double>
+  </Element>
+</Matrix4d>

@@ -50,7 +50,7 @@
     <LibraryPath>..\OpenMesh-5.2\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <LinkIncremental>false</LinkIncremental>
+    <LinkIncremental>true</LinkIncremental>
     <IncludePath>..\OpenMesh-5.2\src;$(IncludePath)</IncludePath>
     <LibraryPath>..\OpenMesh-5.2\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
@@ -79,7 +79,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <Reference Include="HKOGLPanel">
-      <HintPath>..\Debug\HKOGLPanel.dll</HintPath>
+      <HintPath>..\DLLs\HKOGLPanel.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />
