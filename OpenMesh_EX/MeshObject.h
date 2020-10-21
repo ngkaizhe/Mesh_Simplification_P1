@@ -6,11 +6,11 @@
 #include <OpenMesh/Core/Mesh/TriMesh_ArrayKernelT.hh>
 #include <Eigen/Sparse>
 #include <map>
-#include <algorithm>
-#include<Eigen/Sparse>
-#include "Shader.h"
 #include <vector>
+#include <algorithm>
+#include "Shader.h"
 #include <fstream>
+#include <math.h>
 
 typedef OpenMesh::TriMesh_ArrayKernelT<>  TriMesh;
 
@@ -36,7 +36,6 @@ public:
 	GLuint vao;
 	GLuint ebo;
 	GLuint vboVertices, vboNormal;
-
 	void LoadToShader();
 
 private:
@@ -93,8 +92,20 @@ public:
 	int GetVerticesNumber();
 	int GetEdgesNumber();
 	int GetFacesNumber();
-
 	void SetRate(int rate);
+
+
+#pragma region Skeleton Extraction
+	/*  Skeleton Extraction*/
+	void Parameterization();
+
+	MyMesh::Point& GetLaplacianOperator(MyMesh& mesh, MyMesh::VertexIter& v_it, MyMesh::Point vi);
+
+	double calcAreaOfThreePoints(MyMesh::Point& a, MyMesh::Point& b, MyMesh::Point& c);
+
+	double GetOneRingArea(MyMesh& mesh, MyMesh::VertexIter& v_it, OpenMesh::FPropHandleT<double>& areaArr, OpenMesh::FPropHandleT<int>& timeId, int it);
+	// decrease the vertex number 
+#pragma endregion
 
 private:
 	// some added properties

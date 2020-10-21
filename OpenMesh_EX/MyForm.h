@@ -473,7 +473,7 @@ private: System::Void hkoglPanelControl1_Load(System::Object^  sender, System::E
 	// glew init
 	GLenum res = glewInit();
 	if (res != GLEW_OK) {
-		fprintf(stderr, "Error: '%s'\n", glewGetErrorString(res));
+		std::cout << "Error: " << glewGetErrorString(res) << "\n";
 	}
 	// some default enable and disable settings
 	glClearColor(0, 0, 0, 1);
@@ -526,9 +526,14 @@ private: System::Void hkoglPanelControl1_Resize(System::Object^ sender, System::
 }
 private: System::Void hkoglPanelControl1_KeyPress(System::Object^ sender, System::Windows::Forms::KeyPressEventArgs^ e) {
 	m_camera.keyEvents((unsigned char)e->KeyChar);
-	printf("Key %c is pressed\n", e->KeyChar);
+	std::cout << "Key " << e->KeyChar << " is pressed\n";
 
-	if ((unsigned char)e->KeyChar == '1') {
+	if ((unsigned char)e->KeyChar == ' ') {
+		// parallezation
+
+	}
+
+	else if ((unsigned char)e->KeyChar == '1') {
 		if (rate > 0) rate -= 1;
 		meshObjectPtr->SetRate(rate);
 	}
