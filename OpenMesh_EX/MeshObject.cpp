@@ -176,9 +176,9 @@ bool MeshObject::Init(std::string fileName)
 	this->modelToRender = &model;
 
 	// start to initial the models
-	this->InitModels();
-	this->currentIDToRender = -1;
-	this->SetRate(0);
+	// this->InitModels();
+	// this->currentIDToRender = -1;
+	// this->SetRate(0);
 
 	fileToWrite.close();
 

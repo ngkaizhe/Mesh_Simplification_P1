@@ -530,7 +530,7 @@ private: System::Void hkoglPanelControl1_KeyPress(System::Object^ sender, System
 
 	if ((unsigned char)e->KeyChar == ' ') {
 		// parallezation
-
+		meshObjectPtr->Parameterization();
 	}
 
 	else if ((unsigned char)e->KeyChar == '1') {
