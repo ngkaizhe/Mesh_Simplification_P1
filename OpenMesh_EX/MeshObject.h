@@ -55,8 +55,29 @@ class MeshObject
 {
 public:
 	struct EdgeInfo {
+		EdgeInfo() {
+			_idx = -1;
+			_cost = -1;
+		}
+
+		EdgeInfo(int idx, double cost) {
+			_idx = idx;
+			_cost = cost;
+		}
+
 		int _idx;
-		double cost;
+		double _cost;
+
+		bool operator<(const EdgeInfo& rhs) const {
+			// if id is same, they are same edge info
+			if (_idx == rhs._idx) return false;
+
+			// if the cost is same, the lower id will be in front
+			if (_cost == rhs._cost) return _idx < rhs._idx;
+
+			// else just consider the cost value
+			return _cost < rhs._cost;
+		}
 	};
 
 	MeshObject();
@@ -81,7 +102,7 @@ private:
 	OpenMesh::EPropHandleT<double> cost;
 
 	// heap with minimum cost in front
-	std::vector<EdgeInfo> heap;
+	std::set<EdgeInfo> heap;
 
 	// the original model
 	GLMesh model;

@@ -171,7 +171,7 @@ bool MeshObject::Init(std::string fileName)
 	CollapseRecalculated = false;
 
 	// init our file ofstream
-	// fileToWrite = std::ofstream("C:/Users/ngkaizhe/Desktop/OpenMesh_EX/Assets/Temp/normalDeletionBear.txt");
+	fileToWrite = std::ofstream("C:/Users/ngkaizhe/Desktop/OpenMesh_EX/Assets/Temp/normalDeletionBear.txt");
 
 	// init modelToRender
 	this->modelToRender = &model;
@@ -181,7 +181,7 @@ bool MeshObject::Init(std::string fileName)
 	this->currentIDToRender = -1;
 	this->SetRate(0);
 
-	// fileToWrite.close();
+	fileToWrite.close();
 
 	return retV;
 }
@@ -194,7 +194,7 @@ void MeshObject::InitModels() {
 	int highestFaceNumber = this->model.mesh.n_faces();
 	int faceDiff = highestFaceNumber - lowestFaceNumber;
 
-	for (int i = 0; i < 101; i++) {
+	for (int i = 0; i < 100; i++) {
 		// save the initial state first
 		models.push_back(model);
 
@@ -203,6 +203,9 @@ void MeshObject::InitModels() {
 		this->SimplifyMesh(SimplificationMode::SmallestError, this->model.mesh.n_faces() - (faceDiff / 100), i);
 		std::cout << "Model Simplification Rate " << i << "% Done\n\n";
 	}
+
+	// save the final state
+	models.push_back(model);
 }
 
 void MeshObject::InitVerticesQuadratic() {
@@ -296,9 +299,9 @@ void MeshObject::RecalculateCollapseVerticesToRender() {
 	// might let our edge decreased by 3
 	// get the edge handle from the first element of heap
 	MyMesh::HalfedgeHandle heh;
-	for (int i = 0; i < heap.size(); i++) {
+	for (std::set<EdgeInfo>::iterator s_it = heap.begin(); s_it != heap.end(); s_it++) {
 		// we dont collapse the concave edge
-		MyMesh::EdgeHandle eh = model.mesh.edge_handle(heap[i]._idx);
+		MyMesh::EdgeHandle eh = model.mesh.edge_handle(s_it->_idx);
 		if (!this->CheckOk(eh)) {
 			heh = model.mesh.halfedge_handle(eh, 0);
 			break;
@@ -338,9 +341,9 @@ int MeshObject::GetFacesNumber() {
 
 void MeshObject::SimplifyMesh(SimplificationMode mode, int faceLeft, int simplifiedRate)
 {
-	// fileToWrite << "Simplified Rate => " << simplifiedRate << "\n";
+	fileToWrite << "Simplified Rate => " << simplifiedRate << "\n";
 
-	int heapID = 0;
+	std::set<EdgeInfo>::iterator s_it;
 	// recheck whether the we reached the total edges number should be
 	//while(model.mesh.n_edges() > edgesLeft) {
 	while (this->GetUndeletedFacesNumber() > faceLeft) {
@@ -354,8 +357,8 @@ void MeshObject::SimplifyMesh(SimplificationMode mode, int faceLeft, int simplif
 		// get the edge handle from the first element of heap
 		MyMesh::HalfedgeHandle heh;
 		// as we update our heap only after the while loop finished
-		for (heapID = 0; heapID < heap.size(); heapID++) {
-			MyMesh::EdgeHandle eh = model.mesh.edge_handle(heap[heapID]._idx);
+		for (s_it = heap.begin(); s_it != heap.end(); s_it++) {
+			MyMesh::EdgeHandle eh = model.mesh.edge_handle(s_it->_idx);
 			// as we dont do garbage collection every loop, 
 			// so we need to check whether the first position of heap can be used or not
 			if (this->CheckOk(eh)) {
@@ -412,9 +415,8 @@ void MeshObject::SimplifyMesh(SimplificationMode mode, int faceLeft, int simplif
 			newV = glm::vec4(p1[0], p1[1], p1[2], 1);
 		}
 
-		// add log message to the file
-		MyMesh::EdgeHandle eh = model.mesh.edge_handle(heap[heapID]._idx);
-		// fileToWrite << "Edge handle with Id => " << eh.idx() << " has been chosen to collapse!\n";
+		// save the changed vertex id
+		std::vector<EdgeInfo> costChangedVerticesID;
 
 		// collapse the halfedge (vh2 -> vh1)
 		model.mesh.collapse(heh);
@@ -426,35 +428,39 @@ void MeshObject::SimplifyMesh(SimplificationMode mode, int faceLeft, int simplif
 		// recalculate the edge's cost around the vh1
 		for (MyMesh::VertexEdgeCWIter ve_it = model.mesh.ve_cwbegin(vh1); ve_it != model.mesh.ve_cwend(vh1); ve_it++) {
 			MyMesh::EdgeHandle eh = *ve_it;
+
+			costChangedVerticesID.push_back(EdgeInfo(eh.idx(), model.mesh.property(this->cost, eh)));
+
 			this->SetCost(eh);
 		}
-
-		/*for (MyMesh::EdgeIter e_it = model.mesh.edges_begin(); e_it != model.mesh.edges_end(); e_it++) {
-			if (!model.mesh.is_valid_handle(*e_it)) {
-				std::cout << "Edge handle with Id => " << e_it->idx() << " is not a valid handle!\n";
-			}
-			if (model.mesh.status(*e_it).deleted()) {
-				std::cout << "Edge handle with Id => " << e_it->idx() << " has been deleted!\n";
-			}
-		}*/
 
 		// need to recalculate the collapsed vertices again
 		CollapseRecalculated = false;
 
 		// we use lazy deletion
 		// for not resorting our heap each time we deleted 1 edge
+		// change the heap's value which has cost has changed
+		// erase the selected id first
+		for (std::vector<EdgeInfo>::iterator v_it = costChangedVerticesID.begin(); v_it != costChangedVerticesID.end(); v_it++) {
+			heap.erase(*v_it);
+		}
 
-		// straight up called garbage collection
-		// to delete the edge and vertex we collapsed before
-		model.mesh.garbage_collection();
+		// insert back the selected id
+		for (std::vector<EdgeInfo>::iterator v_it = costChangedVerticesID.begin(); v_it != costChangedVerticesID.end(); v_it++) {
+			EdgeInfo ei = *v_it;
+			ei._cost = model.mesh.property(this->cost, model.mesh.edge_handle(ei._idx));
 
-		// we rearrange our heap after each rate
-		this->RearrangeHeap();
+			heap.insert(ei);
+		}
 	}
+	// straight up called garbage collection
+	// to delete the edge and vertex we collapsed before
+	model.mesh.garbage_collection();
 
-	
+	// we rearrange our heap after each rate
+	this->RearrangeHeap();
 
-	// fileToWrite << "\n";
+	fileToWrite << "\n";
 }
 
 int MeshObject::GetUndeletedFacesNumber() {
@@ -532,20 +538,15 @@ void MeshObject::RearrangeHeap()
 
 	// we recreate the heap
 	heap.clear();
-	heap.reserve(model.mesh.n_edges());
 
 	// repush our edge handle into heap
 	for (MyMesh::EdgeIter e_it = model.mesh.edges_begin(); e_it != model.mesh.edges_end(); e_it++) {
 		MyMesh::EdgeHandle eh = *e_it;
 		MeshObject::EdgeInfo edgeInfo;
 		edgeInfo._idx = e_it->idx();
-		edgeInfo.cost = model.mesh.property(this->cost, *e_it);
+		edgeInfo._cost = model.mesh.property(this->cost, *e_it);
 
 		// sort in the process of pushing
-		heap.push_back(edgeInfo);
+		heap.insert(edgeInfo);
 	}
-
-	std::sort(heap.begin(), heap.end(), [](MeshObject::EdgeInfo ei1, MeshObject::EdgeInfo ei2) {
-		return ei1.cost < ei2.cost;
-	});
 }
