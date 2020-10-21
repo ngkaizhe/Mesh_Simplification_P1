@@ -98,6 +98,8 @@ private:
 	// decrease the vertex number
 	void SimplifyMesh(SimplificationMode mode, int vertices_left, int simplifyRate);
 
+	int GetUndeletedEdgesNumber();
+
 	// helper function for init
 	// init all simplification rate models
 	void InitModels();

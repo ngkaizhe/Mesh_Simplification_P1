@@ -171,7 +171,7 @@ bool MeshObject::Init(std::string fileName)
 	CollapseRecalculated = false;
 
 	// init our file ofstream
-	fileToWrite = std::ofstream("C:/Users/ngkaizhe/Desktop/OpenMesh_EX/Assets/Temp/temp1.txt");
+	// fileToWrite = std::ofstream("C:/Users/ngkaizhe/Desktop/OpenMesh_EX/Assets/Temp/normalDeletionBear.txt");
 
 	// init modelToRender
 	this->modelToRender = &model;
@@ -181,7 +181,7 @@ bool MeshObject::Init(std::string fileName)
 	this->currentIDToRender = -1;
 	this->SetRate(0);
 
-	fileToWrite.close();
+	// fileToWrite.close();
 
 	return retV;
 }
@@ -189,7 +189,7 @@ bool MeshObject::Init(std::string fileName)
 void MeshObject::InitModels() {
 	models.reserve(100);
 
-	int lowestPercentage = 20;
+	int lowestPercentage = 1;
 	int lowestEdgeNumber = lowestPercentage / 100.0 * this->model.mesh.n_edges();
 	int highestEdgeNumber = this->model.mesh.n_edges();
 	int edgeDiff = highestEdgeNumber - lowestEdgeNumber;
@@ -338,11 +338,12 @@ int MeshObject::GetFacesNumber() {
 
 void MeshObject::SimplifyMesh(SimplificationMode mode, int edgesLeft, int simplifiedRate)
 {
-	fileToWrite << "Simplified Rate => " << simplifiedRate << "\n";
+	// fileToWrite << "Simplified Rate => " << simplifiedRate << "\n";
 
 	int heapID = 0;
 	// recheck whether the we reached the total edges number should be
-	while (model.mesh.n_edges() > edgesLeft) {
+	//while(model.mesh.n_edges() > edgesLeft) {
+	while (this->GetUndeletedEdgesNumber() > edgesLeft) {
 		/*std::cout << "\n\n============\n";
 		std::cout << "Current Edge left = " << model.mesh.n_edges() << '\n';
 		std::cout << "Target Edge left = " << edgesLeft << '\n';
@@ -357,11 +358,9 @@ void MeshObject::SimplifyMesh(SimplificationMode mode, int edgesLeft, int simpli
 			MyMesh::EdgeHandle eh = model.mesh.edge_handle(heap[heapID]._idx);
 			// as we dont do garbage collection every loop, 
 			// so we need to check whether the first position of heap can be used or not
-			if (!model.mesh.status(eh).deleted()) {
-				if (this->CheckOk(eh)) {
-					heh = model.mesh.halfedge_handle(eh, 0);
-					break;
-				}
+			if (this->CheckOk(eh)) {
+				heh = model.mesh.halfedge_handle(eh, 0);
+				break;
 			}
 		}
 
@@ -415,7 +414,7 @@ void MeshObject::SimplifyMesh(SimplificationMode mode, int edgesLeft, int simpli
 
 		// add log message to the file
 		MyMesh::EdgeHandle eh = model.mesh.edge_handle(heap[heapID]._idx);
-		fileToWrite << "Edge handle with Id => " << eh.idx() << " has been chosen to collapse!\n";
+		// fileToWrite << "Edge handle with Id => " << eh.idx() << " has been chosen to collapse!\n";
 
 		// collapse the halfedge (vh2 -> vh1)
 		model.mesh.collapse(heh);
@@ -439,24 +438,41 @@ void MeshObject::SimplifyMesh(SimplificationMode mode, int edgesLeft, int simpli
 			}
 		}*/
 
-		// straight up called garbage collection
-		// to delete the edge and vertex we collapsed before
-		model.mesh.garbage_collection();
-
-		// we rearrange our heap after each rate
-		this->RearrangeHeap();
-
 		// need to recalculate the collapsed vertices again
 		CollapseRecalculated = false;
+
+		// we use lazy deletion
+		// for not resorting our heap each time we deleted 1 edge
 	}
 
-	fileToWrite << "\n";
+	// straight up called garbage collection
+		// to delete the edge and vertex we collapsed before
+	model.mesh.garbage_collection();
+
+	// we rearrange our heap after each rate
+	this->RearrangeHeap();
+
+	// fileToWrite << "\n";
+}
+
+int MeshObject::GetUndeletedEdgesNumber() {
+	int i = 0;
+	for (MyMesh::EdgeIter e_it = model.mesh.edges_sbegin(); e_it != model.mesh.edges_end(); e_it++) {
+		i++;
+	}
+	return i;
 }
 
 bool MeshObject::CheckOk(OpenMesh::EdgeHandle eh)
 {
-	MyMesh::HalfedgeHandle heh = model.mesh.halfedge_handle(eh, 0);
-	return model.mesh.is_collapse_ok(heh) && !model.mesh.is_boundary(eh);
+	if (model.mesh.status(eh).deleted()) {
+		return false;
+	}
+
+	else {
+		MyMesh::HalfedgeHandle heh = model.mesh.halfedge_handle(eh, 0);
+		return model.mesh.is_collapse_ok(heh) && !model.mesh.is_boundary(eh);
+	}
 }
 
 void MeshObject::SetCost(MyMesh::EdgeHandle eh)
