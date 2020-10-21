@@ -533,7 +533,7 @@ private: System::Void hkoglPanelControl1_KeyPress(System::Object^ sender, System
 		meshObjectPtr->SetRate(rate);
 	}
 	else if ((unsigned char)e->KeyChar == '2') {
-		if(rate < 99) rate += 1;
+		if(rate < 100) rate += 1;
 		meshObjectPtr->SetRate(rate);
 	}
 

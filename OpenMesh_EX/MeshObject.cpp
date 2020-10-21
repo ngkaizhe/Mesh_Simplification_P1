@@ -187,14 +187,14 @@ bool MeshObject::Init(std::string fileName)
 }
 
 void MeshObject::InitModels() {
-	models.reserve(100);
+	models.reserve(101);
 
 	int lowestPercentage = 1;
 	int lowestFaceNumber = lowestPercentage / 100.0 * this->model.mesh.n_faces();
 	int highestFaceNumber = this->model.mesh.n_faces();
 	int faceDiff = highestFaceNumber - lowestFaceNumber;
 
-	for (int i = 0; i < 100; i++) {
+	for (int i = 0; i < 101; i++) {
 		// save the initial state first
 		models.push_back(model);
 
