@@ -4,7 +4,7 @@
 #include<iostream>
 #include<cmath>
 
-static class MyTimer
+class MyTimer
 {
 public:
 	void Start(std::string message="");

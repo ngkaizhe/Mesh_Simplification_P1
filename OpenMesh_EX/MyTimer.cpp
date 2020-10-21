@@ -2,8 +2,8 @@
 
 
 void MyTimer::Start(std::string message) {
+	if (message != "") std::cout << message << '\n';
 	std::cout << "Start Counting Timer!\n";
-	if(message != "") std::cout << message << '\n';
 	startTime = std::chrono::steady_clock::now();
 }
 

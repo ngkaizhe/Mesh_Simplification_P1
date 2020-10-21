@@ -197,15 +197,14 @@ void MeshObject::InitModels() {
 
 	for (int i = 0; i < 100; i++) {
 		// save the initial state first
-		models.push_back(model);
+		GLMesh tModel = model;
+		models.push_back(tModel);
 
 		MyTimer tTemp;
 		// for each rate we wish to decrease the original model
-		std::cout << "Model Simplification Rate " << i << "% Start\n";
-		tTemp.Start();
+		tTemp.Start("Model Simplification Rate " + std::to_string(i) + "% Start");
 		this->SimplifyMesh(SimplificationMode::SmallestError, this->model.mesh.n_faces() - (faceDiff / 100), i);
-		std::cout << "Model Simplification Rate " << i << "% Done\n";
-		tTemp.Flag();
+		tTemp.Flag("Model Simplification Rate " + std::to_string(i) + "% Done");
 	}
 
 	tGlobal.Flag("Simplify all model finish!");
