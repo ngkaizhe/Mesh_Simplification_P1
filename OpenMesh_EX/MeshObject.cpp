@@ -590,7 +590,8 @@ double MeshObject::GetOneRingArea(MyMesh& mesh, MyMesh::VertexIter& v_it, OpenMe
 void MeshObject::Parameterization()
 {
 	std::cout << "Parameterization" << std::endl;
-	int iterNum = 4;
+	int iterNum = 1;
+	float SL = 0.9f;
 	double W_L = 0;
 	double totalArea = 0;
 	/*
@@ -707,9 +708,9 @@ void MeshObject::Parameterization()
 		//std::cout << "total Area : " << totalArea << std::endl;
 		//std::cout << "Fn : " << fn << std::endl;
 		if (it == 0)
-			W_L =  100.0f*sqrt(totalArea/fn);
+			W_L =  7000.0f*sqrt(totalArea/fn);
 		else
-			W_L = 2.0 * W_L;
+			W_L = SL * W_L;
 		std::cout << "W_L : " << W_L << std::endl;
 
 		//std::cout << "W_L : " << W_L << std::endl;
@@ -724,7 +725,8 @@ void MeshObject::Parameterization()
 		Eigen::VectorXd BX(2*count);
 		Eigen::VectorXd BY(2*count);
 		Eigen::VectorXd BZ(2*count);
-		Eigen::LeastSquaresConjugateGradient<Eigen::SparseMatrix<double>> linearSolver;
+		Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> linearSolver;
+		//Eigen::LeastSquaresConjugateGradient<Eigen::SparseMatrix<double>> linearSolver;
 		//Eigen::SparseQR<Eigen::SparseMatrix<double> > linearSolver;
 		BX.setZero();
 		BY.setZero();
@@ -768,10 +770,11 @@ void MeshObject::Parameterization()
 				}
 				//www -= totalWeight;
 				//std::cout << "www : " << www << std::endl;
-				////A(i, i) = -totalWeight * W_L;
+				//A(i, i) = -totalWeight * W_L;
 				A.insert(i, i) = -totalWeight * W_L;
 				//std::cout << "W_H : " << W_H << std::endl;
-				////A(count + i, i) = W_H;
+				//A(count + i, i) = W_H;
+
 				A.insert(count+i, i) = W_H;
 
 				MyMesh::Point p = mesh.point(*v_it);
@@ -789,15 +792,28 @@ void MeshObject::Parameterization()
 		//Eigen::VectorXd X = (A.transpose() * A).ldlt().solve(A.transpose()* BX);
 		//Eigen::VectorXd Y = (A.transpose() * A).ldlt().solve(A.transpose() * BY);
 		//Eigen::VectorXd Z = (A.transpose() * A).ldlt().solve(A.transpose() * BZ);
+		BX = A.transpose() * BX;
+		BY = A.transpose() * BY;
+		BZ = A.transpose() * BZ;
+		A = A.transpose() * A;
 
-		//ldlt.compute(A);
 		A.makeCompressed();
-		//std::cout << "A : " << A << std::endl;
 		linearSolver.compute(A);
-		//std::cout << A << "\n";
 		Eigen::VectorXd X = linearSolver.solve(BX);
 		Eigen::VectorXd Y = linearSolver.solve(BY);
 		Eigen::VectorXd Z = linearSolver.solve(BZ);
+		//ldlt.compute(A);
+		//Eigen::VectorXd X = (A.transpose() * A).ldlt().solve(A.transpose() * BX);
+		//Eigen::VectorXd Y = (A.transpose() * A).ldlt().solve(A.transpose() * BY);
+		//Eigen::VectorXd Z = (A.transpose() * A).ldlt().solve(A.transpose() * BZ);
+
+		//A.makeCompressed();
+		//std::cout << "A : " << A << std::endl;
+		//linearSolver.compute(A);
+		//std::cout << A << "\n";
+		//Eigen::VectorXd X = linearSolver.solve(BX);
+		//Eigen::VectorXd Y = linearSolver.solve(BY);
+		//Eigen::VectorXd Z = linearSolver.solve(BZ);
 		
 		for (MyMesh::VertexIter v_it = mesh.vertices_begin(); v_it != mesh.vertices_end(); ++v_it)
 		{
@@ -806,19 +822,21 @@ void MeshObject::Parameterization()
 				mesh.set_point(*v_it, MyMesh::Point(X[i], Y[i], Z[i]));
 			}
 		}//
-
+		//if (it == iterNum - 1) {
 		for (MyMesh::VertexIter v_it = model.mesh.vertices_begin(); v_it != model.mesh.vertices_end(); ++v_it)
 		{
 			int i = mesh.property(matrixIndex, *v_it);
-			//std::cout << "Point [" << i <<"] = " << MyMesh::Point(X[i], Y[i], Z[i]) << std::endl;
+				//std::cout << "Point [" << i <<"] = " << MyMesh::Point(X[i], Y[i], Z[i]) << std::endl;
 
 			if (i >= count || i < 0) {
 				std::cout << "Index out of range!! " << i << std::endl;
 				continue;
 			}
-			//model.mesh.set_point(*v_it, MyMesh::Point(mX[0], mY[0], mZ[0]));
-			model.mesh.set_point(*v_it, MyMesh::Point(X[i] , Y[i] , Z[i]));
+				//model.mesh.set_point(*v_it, MyMesh::Point(mX[0], mY[0], mZ[0]));
+			model.mesh.set_point(*v_it, MyMesh::Point(X[i], Y[i], Z[i]));
 		}//
+		//}
+		
 		std::cout << "Solve linear system finish11!\n" << std::endl;
 
 		// solve linear system
