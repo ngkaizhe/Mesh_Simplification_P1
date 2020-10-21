@@ -170,17 +170,17 @@ bool MeshObject::Init(std::string fileName)
 	CollapseRecalculated = false;
 
 	// init our file ofstream
-	fileToWrite = std::ofstream("C:/Users/ngkaizhe/Desktop/OpenMesh_EX/Assets/Temp/normalDeletionBear.txt");
+	// fileToWrite = std::ofstream("C:/Users/ngkaizhe/Desktop/OpenMesh_EX/Assets/Temp/normalDeletionBear.txt");
 
 	// init modelToRender
 	this->modelToRender = &model;
 
 	// start to initial the models
-	// this->InitModels();
-	// this->currentIDToRender = -1;
-	// this->SetRate(0);
+	this->InitModels();
+	this->currentIDToRender = -1;
+	this->SetRate(0);
 
-	fileToWrite.close();
+	// fileToWrite.close();
 
 	return retV;
 }
@@ -340,7 +340,7 @@ int MeshObject::GetFacesNumber() {
 
 void MeshObject::SimplifyMesh(SimplificationMode mode, int faceLeft, int simplifiedRate)
 {
-	fileToWrite << "Simplified Rate => " << simplifiedRate << "\n";
+	// fileToWrite << "Simplified Rate => " << simplifiedRate << "\n";
 
 	std::set<EdgeInfo>::iterator s_it;
 	// recheck whether the we reached the total edges number should be
@@ -413,6 +413,9 @@ void MeshObject::SimplifyMesh(SimplificationMode mode, int faceLeft, int simplif
 		// save the changed vertex id
 		std::vector<EdgeInfo> costChangedVerticesID;
 
+		MyMesh::EdgeHandle eh = model.mesh.edge_handle(s_it->_idx);
+		// fileToWrite << "Edge handle with Id => " << eh.idx() << " has been chosen to collapse!\n";
+
 		// collapse the halfedge (vh2 -> vh1)
 		model.mesh.collapse(heh);
 		// set the new vertex point
@@ -455,7 +458,7 @@ void MeshObject::SimplifyMesh(SimplificationMode mode, int faceLeft, int simplif
 	// we rearrange our heap after each rate
 	this->RearrangeHeap();
 
-	fileToWrite << "\n";
+	// fileToWrite << "\n";
 }
 
 int MeshObject::GetUndeletedFacesNumber() {
@@ -528,9 +531,6 @@ void MeshObject::SetCost(MyMesh::EdgeHandle eh)
 
 void MeshObject::RearrangeHeap()
 {
-	MyMesh::EdgeHandle tempEh;
-	int min;
-
 	// we recreate the heap
 	heap.clear();
 
