@@ -263,7 +263,7 @@ void ViewManager::mouseMoveEvent(int x, int y)
 */
 void ViewManager::wheelEvent(int direction)
 {
-	wheel_val = direction * 1.0f;
+	wheel_val = direction * 3.0f;
 	Zoom(wheel_val / 120.0f);
 }
 

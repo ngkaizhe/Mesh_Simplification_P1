@@ -8,7 +8,6 @@
 #include <map>
 #include <vector>
 #include <algorithm>
-#include<Eigen/Sparse>
 #include "Shader.h"
 
 typedef OpenMesh::TriMesh_ArrayKernelT<>  TriMesh;
@@ -59,9 +58,16 @@ public:
 
 	/*  Skeleton Extraction*/
 	void Parameterization();
+
+	MyMesh::Point& GetLaplacianOperator(MyMesh& mesh, MyMesh::VertexIter& v_it, MyMesh::Point vi);
+
+	double calcAreaOfThreePoints(MyMesh::Point& a, MyMesh::Point& b, MyMesh::Point& c);
+		
+	double GetOneRingArea(MyMesh& mesh, MyMesh::VertexIter& v_it, OpenMesh::FPropHandleT<double>& areaArr, OpenMesh::FPropHandleT<int>& timeId, int it);
 	// decrease the vertex number 
 
 private:
 	GLMesh model;
+	bool flag = false;
 };
 
