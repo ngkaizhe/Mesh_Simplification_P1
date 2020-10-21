@@ -30,7 +30,7 @@
     <ClCompile Include="MeshObject.cpp">
       <Filter>原始程式檔</Filter>
     </ClCompile>
-    <ClCompile Include="Timer.cpp">
+    <ClCompile Include="MyTimer.cpp">
       <Filter>原始程式檔</Filter>
     </ClCompile>
   </ItemGroup>
@@ -53,7 +53,7 @@
     <ClInclude Include="MeshObject.h">
       <Filter>標頭檔</Filter>
     </ClInclude>
-    <ClInclude Include="Timer.h">
+    <ClInclude Include="MyTimer.h">
       <Filter>標頭檔</Filter>
     </ClInclude>
   </ItemGroup>

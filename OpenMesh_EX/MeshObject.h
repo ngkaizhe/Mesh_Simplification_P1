@@ -108,6 +108,9 @@ public:
 #pragma endregion
 
 private:
+	// self timer
+	MyTimer tGlobal;
+
 	// some added properties
 	OpenMesh::VPropHandleT<glm::mat4> quadricMat;
 	OpenMesh::EPropHandleT<double> cost;

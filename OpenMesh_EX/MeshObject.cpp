@@ -154,6 +154,7 @@ MeshObject::~MeshObject()
 
 bool MeshObject::Init(std::string fileName)
 {
+	tGlobal.Start();
 	bool retV = model.Init(fileName);
 
 	this->InitVerticesQuadratic();
@@ -166,6 +167,7 @@ bool MeshObject::Init(std::string fileName)
 	// sort the heap
 	this->RearrangeHeap();
 	std::cout << "Init finish arrange heap\n";
+	tGlobal.Flag();
 
 	CollapseRecalculated = false;
 
@@ -197,11 +199,16 @@ void MeshObject::InitModels() {
 		// save the initial state first
 		models.push_back(model);
 
+		MyTimer tTemp;
 		// for each rate we wish to decrease the original model
 		std::cout << "Model Simplification Rate " << i << "% Start\n";
+		tTemp.Start();
 		this->SimplifyMesh(SimplificationMode::SmallestError, this->model.mesh.n_faces() - (faceDiff / 100), i);
-		std::cout << "Model Simplification Rate " << i << "% Done\n\n";
+		std::cout << "Model Simplification Rate " << i << "% Done\n";
+		tTemp.Flag();
 	}
+
+	tGlobal.Flag("Simplify all model finish!");
 
 	// save the final state
 	models.push_back(model);
