@@ -188,6 +188,7 @@ bool MeshObject::Init(std::string fileName)
 }
 
 void MeshObject::InitModels() {
+	models.clear();
 	models.reserve(101);
 
 	int lowestPercentage = 1;
@@ -198,19 +199,25 @@ void MeshObject::InitModels() {
 	for (int i = 0; i < 100; i++) {
 		// save the initial state first
 		GLMesh tModel = model;
+		tModel.mesh.garbage_collection();
+		tModel.LoadToShader();
 		models.push_back(tModel);
 
-		MyTimer tTemp;
+		// MyTimer tTemp;
 		// for each rate we wish to decrease the original model
-		tTemp.Start("Model Simplification Rate " + std::to_string(i) + "% Start");
-		this->SimplifyMesh(SimplificationMode::SmallestError, this->model.mesh.n_faces() - (faceDiff / 100), i);
-		tTemp.Flag("Model Simplification Rate " + std::to_string(i) + "% Done");
+		//tTemp.Start("Model Simplification Rate " + std::to_string(i) + "% Start");
+		std::cout << "Model Simplification Rate " + std::to_string(i) + "% Start\n";
+		this->SimplifyMesh(SimplificationMode::SmallestError, this->GetUndeletedFacesNumber() - (faceDiff / 100), i);
+		//tTemp.Flag("Model Simplification Rate " + std::to_string(i) + "% Done");
+		std::cout << "Model Simplification Rate " + std::to_string(i) + "% Done\n\n";
 	}
+	// save the final state
+	GLMesh tModel = model;
+	tModel.mesh.garbage_collection();
+	tModel.LoadToShader();
+	models.push_back(tModel);
 
 	tGlobal.Flag("Simplify all model finish!");
-
-	// save the final state
-	models.push_back(model);
 }
 
 void MeshObject::InitVerticesQuadratic() {
@@ -328,7 +335,6 @@ void MeshObject::SetRate(int rate) {
 	if (rate != this->currentIDToRender) {
 		this->currentIDToRender = rate;
 		this->modelToRender = &models[this->currentIDToRender];
-		this->modelToRender->LoadToShader();
 	}
 }
 
@@ -349,8 +355,8 @@ void MeshObject::SimplifyMesh(SimplificationMode mode, int faceLeft, int simplif
 	// fileToWrite << "Simplified Rate => " << simplifiedRate << "\n";
 
 	std::set<EdgeInfo>::iterator s_it;
+
 	// recheck whether the we reached the total edges number should be
-	//while(model.mesh.n_edges() > edgesLeft) {
 	while (this->GetUndeletedFacesNumber() > faceLeft) {
 
 		// for each edge collapse
@@ -416,8 +422,25 @@ void MeshObject::SimplifyMesh(SimplificationMode mode, int faceLeft, int simplif
 			newV = glm::vec4(p1[0], p1[1], p1[2], 1);
 		}
 
-		// save the changed vertex id
-		std::vector<EdgeInfo> costChangedVerticesID;
+		// save the edge id around vh1 and vh2
+		std::vector<EdgeInfo> edgesAroundVh1;
+		std::vector<EdgeInfo> edgesAroundVh2;
+
+		for (MyMesh::VertexEdgeCWIter ve_it = model.mesh.ve_cwbegin(vh1); ve_it != model.mesh.ve_cwend(vh1); ve_it++) {
+			EdgeInfo ei;
+			ei._idx = ve_it->idx();
+			ei._cost = model.mesh.property(this->cost, *ve_it);
+
+			edgesAroundVh1.push_back(ei);
+		}
+
+		for (MyMesh::VertexEdgeCWIter ve_it = model.mesh.ve_cwbegin(vh2); ve_it != model.mesh.ve_cwend(vh2); ve_it++) {
+			EdgeInfo ei;
+			ei._idx = ve_it->idx();
+			ei._cost = model.mesh.property(this->cost, *ve_it);
+
+			edgesAroundVh2.push_back(ei);
+		}
 
 		MyMesh::EdgeHandle eh = model.mesh.edge_handle(s_it->_idx);
 		// fileToWrite << "Edge handle with Id => " << eh.idx() << " has been chosen to collapse!\n";
@@ -429,11 +452,15 @@ void MeshObject::SimplifyMesh(SimplificationMode mode, int faceLeft, int simplif
 		// set the vh1 quadratic matrix
 		model.mesh.property(this->quadricMat, vh1) = newQ;
 
-		// recalculate the edge's cost around the vh1
+		// recalculate the edge's cost around the result vh1
+		std::vector<EdgeInfo> edgesAroundResultVh1;
 		for (MyMesh::VertexEdgeCWIter ve_it = model.mesh.ve_cwbegin(vh1); ve_it != model.mesh.ve_cwend(vh1); ve_it++) {
 			MyMesh::EdgeHandle eh = *ve_it;
 
-			costChangedVerticesID.push_back(EdgeInfo(eh.idx(), model.mesh.property(this->cost, eh)));
+			EdgeInfo ei;
+			ei._idx = eh.idx();
+			ei._cost = model.mesh.property(this->cost, eh);
+			edgesAroundResultVh1.push_back(ei);
 
 			this->SetCost(eh);
 		}
@@ -445,24 +472,21 @@ void MeshObject::SimplifyMesh(SimplificationMode mode, int faceLeft, int simplif
 		// for not resorting our heap each time we deleted 1 edge
 		// change the heap's value which has cost has changed
 		// erase the selected id first
-		for (std::vector<EdgeInfo>::iterator v_it = costChangedVerticesID.begin(); v_it != costChangedVerticesID.end(); v_it++) {
+		for (std::vector<EdgeInfo>::iterator v_it = edgesAroundVh1.begin(); v_it != edgesAroundVh1.end(); v_it++) {
+			heap.erase(*v_it);
+		}
+		for (std::vector<EdgeInfo>::iterator v_it = edgesAroundVh2.begin(); v_it != edgesAroundVh2.end(); v_it++) {
 			heap.erase(*v_it);
 		}
 
-		// insert back the selected id
-		for (std::vector<EdgeInfo>::iterator v_it = costChangedVerticesID.begin(); v_it != costChangedVerticesID.end(); v_it++) {
+		// insert back the changed cost value edge id
+		for (std::vector<EdgeInfo>::iterator v_it = edgesAroundResultVh1.begin(); v_it != edgesAroundResultVh1.end(); v_it++) {
 			EdgeInfo ei = *v_it;
 			ei._cost = model.mesh.property(this->cost, model.mesh.edge_handle(ei._idx));
 
 			heap.insert(ei);
 		}
 	}
-	// straight up called garbage collection
-	// to delete the edge and vertex we collapsed before
-	model.mesh.garbage_collection();
-
-	// we rearrange our heap after each rate
-	this->RearrangeHeap();
 
 	// fileToWrite << "\n";
 }
