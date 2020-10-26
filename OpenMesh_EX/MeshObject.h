@@ -94,6 +94,10 @@ public:
 	int GetFacesNumber();
 	void SetRate(int rate);
 
+	// the current model to be render
+	GLMesh* modelToRender;
+	// decrease the vertex number
+	void SimplifyMeshOnce(SimplificationMode mode);
 
 #pragma region Skeleton Extraction
 	/*  Skeleton Extraction*/
@@ -122,20 +126,19 @@ private:
 	GLMesh model;
 	// the model to be save in all rate
 	std::vector<GLMesh> models;
-	// the current model to be render
-	GLMesh* modelToRender;
 	// mesh simplify rate(id)
 	int currentIDToRender;
 
 	// file ofstream
 	std::ofstream fileToWrite;
 
-	// decrease the vertex number
-	void SimplifyMesh(SimplificationMode mode, int vertices_left, int simplifyRate);
-
 	int GetUndeletedFacesNumber();
 
 	// helper function for init
+	// decrease the vertex number
+	void SimplifyMesh(SimplificationMode mode, int vertices_left, int simplifyRate);
+	// init heap and quadratic
+	void InitProperties();
 	// init all simplification rate models
 	void InitModels();
 	// init vertices quadratic property

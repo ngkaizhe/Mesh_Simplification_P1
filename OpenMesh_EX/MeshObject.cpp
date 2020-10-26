@@ -157,6 +157,24 @@ bool MeshObject::Init(std::string fileName)
 	tGlobal.Start();
 	bool retV = model.Init(fileName);
 
+	// init modelToRender
+	this->modelToRender = &model;
+
+	models.clear();
+	models.reserve(101);
+	this->InitProperties();
+
+	//// start to initial the models
+	this->InitModels();
+	this->currentIDToRender = -1;
+	this->SetRate(0);
+
+	model.mesh.garbage_collection();
+
+	return retV;
+}
+
+void MeshObject::InitProperties() {
 	this->InitVerticesQuadratic();
 
 	// initial the cost of all edge handle
@@ -170,33 +188,16 @@ bool MeshObject::Init(std::string fileName)
 	tGlobal.Flag();
 
 	CollapseRecalculated = false;
-
-	// init our file ofstream
-	// fileToWrite = std::ofstream("C:/Users/ngkaizhe/Desktop/OpenMesh_EX/Assets/Temp/normalDeletionBear.txt");
-
-	// init modelToRender
-	this->modelToRender = &model;
-
-	// start to initial the models
-	this->InitModels();
-	this->currentIDToRender = -1;
-	this->SetRate(0);
-
-	// fileToWrite.close();
-
-	return retV;
 }
 
 void MeshObject::InitModels() {
-	models.clear();
-	models.reserve(101);
-
 	int lowestPercentage = 1;
 	int lowestFaceNumber = lowestPercentage / 100.0 * this->model.mesh.n_faces();
 	int highestFaceNumber = this->model.mesh.n_faces();
 	int faceDiff = highestFaceNumber - lowestFaceNumber;
 
 	for (int i = 0; i < 100; i++) {
+
 		// save the initial state first
 		GLMesh tModel = model;
 		tModel.mesh.garbage_collection();
@@ -211,6 +212,7 @@ void MeshObject::InitModels() {
 		//tTemp.Flag("Model Simplification Rate " + std::to_string(i) + "% Done");
 		std::cout << "Model Simplification Rate " + std::to_string(i) + "% Done\n\n";
 	}
+
 	// save the final state
 	GLMesh tModel = model;
 	tModel.mesh.garbage_collection();
@@ -222,12 +224,12 @@ void MeshObject::InitModels() {
 
 void MeshObject::InitVerticesQuadratic() {
 	// initial the quadric matrix for each vertex to 0.0
-	for (MyMesh::VertexIter v_it = model.mesh.vertices_begin(); v_it != model.mesh.vertices_end(); v_it++) {
+	for (MyMesh::VertexIter v_it = model.mesh.vertices_sbegin(); v_it != model.mesh.vertices_end(); v_it++) {
 		model.mesh.property(this->quadricMat, *v_it) = glm::mat4(0.0);
 	}
 
 	// initial the quadric matrix for each vertices
-	for (MyMesh::FaceIter f_it = model.mesh.faces_begin(); f_it != model.mesh.faces_end(); f_it++) {
+	for (MyMesh::FaceIter f_it = model.mesh.faces_sbegin(); f_it != model.mesh.faces_end(); f_it++) {
 		MyMesh::FaceHandle fh = *f_it;
 		// run through each vertices the face have
 		glm::mat4 Kp = glm::mat4(0.0);
@@ -350,15 +352,16 @@ int MeshObject::GetFacesNumber() {
 	return modelToRender->mesh.n_faces();
 }
 
-void MeshObject::SimplifyMesh(SimplificationMode mode, int faceLeft, int simplifiedRate)
-{
-	// fileToWrite << "Simplified Rate => " << simplifiedRate << "\n";
+void MeshObject::SimplifyMeshOnce(SimplificationMode mode) {
+	model.mesh.garbage_collection();
+	RearrangeHeap();
+	modelToRender = &model;
 
 	std::set<EdgeInfo>::iterator s_it;
-
+	bool once = true;
 	// recheck whether the we reached the total edges number should be
-	while (this->GetUndeletedFacesNumber() > faceLeft) {
-
+	while (once) {
+		once = false;
 		// for each edge collapse
 		// might let our edge decreased by 3
 		// get the edge handle from the first element of heap
@@ -468,23 +471,171 @@ void MeshObject::SimplifyMesh(SimplificationMode mode, int faceLeft, int simplif
 		// need to recalculate the collapsed vertices again
 		CollapseRecalculated = false;
 
-		// we use lazy deletion
+
+		if (false) {
+			// we use lazy deletion
 		// for not resorting our heap each time we deleted 1 edge
 		// change the heap's value which has cost has changed
 		// erase the selected id first
-		for (std::vector<EdgeInfo>::iterator v_it = edgesAroundVh1.begin(); v_it != edgesAroundVh1.end(); v_it++) {
-			heap.erase(*v_it);
+			for (std::vector<EdgeInfo>::iterator v_it = edgesAroundVh1.begin(); v_it != edgesAroundVh1.end(); v_it++) {
+				heap.erase(*v_it);
+			}
+			for (std::vector<EdgeInfo>::iterator v_it = edgesAroundVh2.begin(); v_it != edgesAroundVh2.end(); v_it++) {
+				heap.erase(*v_it);
+			}
+
+			// insert back the changed cost value edge id
+			for (std::vector<EdgeInfo>::iterator v_it = edgesAroundResultVh1.begin(); v_it != edgesAroundResultVh1.end(); v_it++) {
+				EdgeInfo ei = *v_it;
+				ei._cost = model.mesh.property(this->cost, model.mesh.edge_handle(ei._idx));
+
+				heap.insert(ei);
+			}
 		}
-		for (std::vector<EdgeInfo>::iterator v_it = edgesAroundVh2.begin(); v_it != edgesAroundVh2.end(); v_it++) {
-			heap.erase(*v_it);
+	}
+
+	modelToRender->mesh.garbage_collection();
+	modelToRender->LoadToShader();
+
+}
+
+void MeshObject::SimplifyMesh(SimplificationMode mode, int faceLeft, int simplifiedRate)
+{
+	// fileToWrite << "Simplified Rate => " << simplifiedRate << "\n";
+
+	std::set<EdgeInfo>::iterator s_it;
+
+	// recheck whether the we reached the total edges number should be
+	while (this->GetUndeletedFacesNumber() > faceLeft) {
+		// for each edge collapse
+		// might let our edge decreased by 3
+		// get the edge handle from the first element of heap
+		MyMesh::HalfedgeHandle heh;
+		// as we update our heap only after the while loop finished
+		for (s_it = heap.begin(); s_it != heap.end(); s_it++) {
+			MyMesh::EdgeHandle eh = model.mesh.edge_handle(s_it->_idx);
+			// as we dont do garbage collection every loop, 
+			// so we need to check whether the first position of heap can be used or not
+			if (this->CheckOk(eh)) {
+				heh = model.mesh.halfedge_handle(eh, 0);
+				break;
+			}
 		}
 
-		// insert back the changed cost value edge id
-		for (std::vector<EdgeInfo>::iterator v_it = edgesAroundResultVh1.begin(); v_it != edgesAroundResultVh1.end(); v_it++) {
-			EdgeInfo ei = *v_it;
-			ei._cost = model.mesh.property(this->cost, model.mesh.edge_handle(ei._idx));
+		// get the 2 vertice handles of the edge handle
+		MyMesh::VertexHandle vh1 = model.mesh.to_vertex_handle(heh);
+		MyMesh::VertexHandle vh2 = model.mesh.from_vertex_handle(heh);
 
-			heap.insert(ei);
+		// find the newQ
+		glm::mat4 newQ = model.mesh.property(this->quadricMat, vh1) + model.mesh.property(this->quadricMat, vh2);
+		// the final vertex position to be
+		glm::vec4 newV;
+
+		// choose the different mode
+		if (mode == SimplificationMode::SmallestError) {
+			MyMesh::Point p1 = model.mesh.point(vh1);
+			MyMesh::Point p2 = model.mesh.point(vh2);
+			// set the differential matrix
+			glm::mat4 differentialMat = newQ;
+			// set the last row to (0, 0, 0, 1)
+			differentialMat = glm::row(differentialMat, 3, glm::vec4(0, 0, 0, 1));
+
+			// if the differential matrix is invertible
+			if (glm::determinant(differentialMat) != 0) {
+				newV = glm::inverse(differentialMat) * glm::vec4(0, 0, 0, 1);
+			}
+			// else we just use the middle point
+			else {
+				MyMesh::Point p1 = model.mesh.point(vh1);
+				MyMesh::Point p2 = model.mesh.point(vh2);
+				MyMesh::Point newP = (p1 + p2) / 2.0f;
+				newV = glm::vec4(newP[0], newP[1], newP[2], 1);
+			}
+		}
+		// V = (V1 + V2) / 2
+		else if (mode == SimplificationMode::Middle) {
+			MyMesh::Point p1 = model.mesh.point(vh1);
+			MyMesh::Point p2 = model.mesh.point(vh2);
+			MyMesh::Point newP = (p1 + p2) / 2.0f;
+			newV = glm::vec4(newP[0], newP[1], newP[2], 1);
+		}
+		// V = V1 
+		else if (mode == SimplificationMode::V1) {
+			MyMesh::Point p1 = model.mesh.point(vh1);
+			newV = glm::vec4(p1[0], p1[1], p1[2], 1);
+		}
+		// V = V2
+		else if (mode == SimplificationMode::V2) {
+			MyMesh::Point p1 = model.mesh.point(vh2);
+			newV = glm::vec4(p1[0], p1[1], p1[2], 1);
+		}
+
+		// save the edge id around vh1 and vh2
+		std::vector<EdgeInfo> edgesAroundVh1;
+		std::vector<EdgeInfo> edgesAroundVh2;
+
+		for (MyMesh::VertexEdgeCWIter ve_it = model.mesh.ve_cwbegin(vh1); ve_it != model.mesh.ve_cwend(vh1); ve_it++) {
+			EdgeInfo ei;
+			ei._idx = ve_it->idx();
+			ei._cost = model.mesh.property(this->cost, *ve_it);
+
+			edgesAroundVh1.push_back(ei);
+		}
+
+		for (MyMesh::VertexEdgeCWIter ve_it = model.mesh.ve_cwbegin(vh2); ve_it != model.mesh.ve_cwend(vh2); ve_it++) {
+			EdgeInfo ei;
+			ei._idx = ve_it->idx();
+			ei._cost = model.mesh.property(this->cost, *ve_it);
+
+			edgesAroundVh2.push_back(ei);
+		}
+
+		MyMesh::EdgeHandle eh = model.mesh.edge_handle(s_it->_idx);
+		// fileToWrite << "Edge handle with Id => " << eh.idx() << " has been chosen to collapse!\n";
+
+		// collapse the halfedge (vh2 -> vh1)
+		model.mesh.collapse(heh);
+		// set the new vertex point
+		model.mesh.set_point(vh1, MyMesh::Point(newV[0], newV[1], newV[2]));
+		// set the vh1 quadratic matrix
+		model.mesh.property(this->quadricMat, vh1) = newQ;
+
+		// recalculate the edge's cost around the result vh1
+		std::vector<EdgeInfo> edgesAroundResultVh1;
+		for (MyMesh::VertexEdgeCWIter ve_it = model.mesh.ve_cwbegin(vh1); ve_it != model.mesh.ve_cwend(vh1); ve_it++) {
+			MyMesh::EdgeHandle eh = *ve_it;
+
+			EdgeInfo ei;
+			ei._idx = eh.idx();
+			ei._cost = model.mesh.property(this->cost, eh);
+			edgesAroundResultVh1.push_back(ei);
+
+			this->SetCost(eh);
+		}
+
+		// need to recalculate the collapsed vertices again
+		CollapseRecalculated = false;
+
+		bool useLazyDeletion = true;
+		if (useLazyDeletion) {
+			// we use lazy deletion
+			// for not resorting our heap each time we deleted 1 edge
+			// change the heap's value which has cost has changed
+			// erase the selected id first
+			for (std::vector<EdgeInfo>::iterator v_it = edgesAroundVh1.begin(); v_it != edgesAroundVh1.end(); v_it++) {
+				heap.erase(*v_it);
+			}
+			for (std::vector<EdgeInfo>::iterator v_it = edgesAroundVh2.begin(); v_it != edgesAroundVh2.end(); v_it++) {
+				heap.erase(*v_it);
+			}
+
+			// insert back the changed cost value edge id
+			for (std::vector<EdgeInfo>::iterator v_it = edgesAroundResultVh1.begin(); v_it != edgesAroundResultVh1.end(); v_it++) {
+				EdgeInfo ei = *v_it;
+				ei._cost = model.mesh.property(this->cost, model.mesh.edge_handle(ei._idx));
+
+				heap.insert(ei);
+			}
 		}
 	}
 
@@ -738,7 +889,7 @@ void MeshObject::Parameterization()
 		//std::cout << "total Area : " << totalArea << std::endl;
 		//std::cout << "Fn : " << fn << std::endl;
 		if (it == 0)
-			W_L =  7000.0f*sqrt(totalArea/fn);
+			W_L =  10.0f*sqrt(totalArea/fn);
 		else
 			W_L = SL * W_L;
 		std::cout << "W_L : " << W_L << std::endl;

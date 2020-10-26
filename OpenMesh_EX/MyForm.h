@@ -529,8 +529,8 @@ private: System::Void hkoglPanelControl1_KeyPress(System::Object^ sender, System
 	std::cout << "Key " << e->KeyChar << " is pressed\n";
 
 	if ((unsigned char)e->KeyChar == ' ') {
-		// parallezation
-		meshObjectPtr->Parameterization();
+		// simplify mesh
+		meshObjectPtr->SimplifyMeshOnce(SimplificationMode::SmallestError);
 	}
 
 	else if ((unsigned char)e->KeyChar == '1') {
@@ -602,7 +602,11 @@ private: System::Void saveModelDialog_FileOk(System::Object^  sender, System::Co
 	MarshalString(saveModelDialog->FileName, filename);
 
 	// do save file action
-	
+	if (!OpenMesh::IO::write_mesh(meshObjectPtr->modelToRender->mesh, filename))
+	{
+		std::cerr << "write error\n";
+		exit(1);
+	}
 
 }
 private: System::Void timer1_Tick(System::Object^ sender, System::EventArgs^ e) {
