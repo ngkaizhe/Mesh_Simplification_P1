@@ -94,7 +94,9 @@ public:
 	// the current model to be render
 	GLMesh* modelToRender;
 	// decrease the vertex number
+	
 	void SimplifyMeshQEMOnce(SimplificationMode mode);
+	void SimplifyMeshMMSOnce();
 
 #pragma region Get Mesh Info
 	int GetVerticesNumber();
@@ -152,6 +154,19 @@ private:
 	// rearrange the heap
 	void RearrangeHeap();
 
+#pragma endregion
+
+#pragma region Mesh Simplification SSM
+	// some added properties
+	// optimization purpose: total distance of base vertex and its adjadent vertices
+	OpenMesh::VPropHandleT<double> totalDistance;
+	// halfedge cost
+	OpenMesh::HPropHandleT<double> heCost;
+
+	int lowestCostHalfEdgeID;
+
+	void InitSSM();
+	float F(MyMesh::HalfedgeHandle heh, bool isInit);
 #pragma endregion
 
 	// debug purpose

@@ -146,10 +146,17 @@ MeshObject::MeshObject()
 	// add properties
 	model.mesh.add_property(this->quadricMat);
 	model.mesh.add_property(this->cost);
+	model.mesh.add_property(this->heCost);
+	model.mesh.add_property(this->totalDistance);
 }
 
 MeshObject::~MeshObject()
 {
+	// remove properties
+	model.mesh.remove_property(this->quadricMat);
+	model.mesh.remove_property(this->cost);
+	model.mesh.remove_property(this->heCost);
+	model.mesh.remove_property(this->totalDistance);
 }
 
 bool MeshObject::Init(std::string fileName)
@@ -711,11 +718,11 @@ void MeshObject::SetCost(MyMesh::EdgeHandle eh)
 	// 1X4 vector * 4X1 vector = dot product
 	cost = glm::dot(glm::transpose(newQ) * newV, newV);
 
-	float x = newV.x;
-	float y = newV.y;
-	float z = newV.z;
-	double cost2 = (newQ[0][0] * x * x) + (2 * newQ[0][1] * x * y) + (2 * newQ[0][2] * x * z) + (2 * newQ[0][3] * x) + (newQ[1][1] * y * y) +
-		(2 * newQ[1][2] * y * z) + (2 * newQ[1][3] * y) + (newQ[2][2] * z * z) + (2 * newQ[2][3] * z) + (newQ[3][3]);
+	//float x = newV.x;
+	//float y = newV.y;
+	//float z = newV.z;
+	//double cost2 = (newQ[0][0] * x * x) + (2 * newQ[0][1] * x * y) + (2 * newQ[0][2] * x * z) + (2 * newQ[0][3] * x) + (newQ[1][1] * y * y) +
+	//	(2 * newQ[1][2] * y * z) + (2 * newQ[1][3] * y) + (newQ[2][2] * z * z) + (2 * newQ[2][3] * z) + (newQ[3][3]);
 	
 	// set the cost of the edge
 	model.mesh.property(this->cost, eh) = cost;
@@ -1038,4 +1045,166 @@ void MeshObject::Parameterization()
 	model.LoadToShader();
 }
 
+#pragma endregion
+
+#pragma region Mesh Simplification SSM
+void MeshObject::InitSSM() {
+	// initialize the Q(SSM) for all vertices
+	// reclear all quadratic mat in the vertices handle
+	// reclear the total distance of vertices too
+	for (MyMesh::VertexIter v_it = model.mesh.vertices_sbegin(); v_it != model.mesh.vertices_end(); v_it++) {
+		model.mesh.property(this->quadricMat, *v_it) = glm::mat4(0.0f);
+		model.mesh.property(this->totalDistance, *v_it) = 0.0f;
+	}
+
+	// loop through all edge to init vertices' quadratic matrix
+	for (MyMesh::EdgeIter e_it = model.mesh.edges_sbegin(); e_it != model.mesh.edges_end(); e_it++) {
+		MyMesh::HalfedgeHandle heh = model.mesh.halfedge_handle(*e_it, 0);
+		MyMesh::VertexHandle vh1 = model.mesh.from_vertex_handle(heh);
+		MyMesh::VertexHandle vh2 = model.mesh.to_vertex_handle(heh);
+		
+		// i->j as halfedge presentation
+		MyMesh::Point iTemp = model.mesh.point(vh1);
+		glm::vec3 i = glm::vec3(iTemp[0], iTemp[1], iTemp[2]);
+		MyMesh::Point jTemp = model.mesh.point(vh2);
+		glm::vec3 j = glm::vec3(jTemp[0], jTemp[1], jTemp[2]);
+
+		// a is the normalized edge vector of edge(i, j)
+		glm::vec3 a = glm::normalize(j - i);
+		glm::vec3 b = glm::cross(a, i);
+
+		// glm is column major
+		glm::mat4x3 K = glm::mat4x3(0.0f);
+		K[0] = glm::vec3(0, a.z, -a.y);
+		K[1] = glm::vec3(-a.z, 0, a.x);
+		K[2] = glm::vec3(a.y, -a.x, 0);
+		K[3] = glm::vec3(-b.x, -b.y, -b.z);
+
+		glm::mat4 Q = glm::transpose(K) * K;
+
+		model.mesh.property(this->quadricMat, vh1) += Q;
+		model.mesh.property(this->quadricMat, vh2) += Q;
+
+		// optimization purpose, we add the total distance of the vertex
+		model.mesh.property(this->totalDistance, vh1) += glm::distance(i, j);
+		model.mesh.property(this->totalDistance, vh2) += glm::distance(i, j);
+	}
+	
+	bool isFirst = true;
+	double lowestHeCost;
+	this->lowestCostHalfEdgeID = -1;
+	// init the cost to the halfedge of mesh
+	// save the lowest cost id from the mesh
+	for (MyMesh::HalfedgeIter he_it = model.mesh.halfedges_begin(); he_it != model.mesh.halfedges_end(); he_it++) {
+		model.mesh.property(this->heCost, *he_it) = this->F(*he_it, true);
+
+		// determine the lowestCostHalfEdgeID
+		if (model.mesh.is_collapse_ok(*he_it)) {
+			if (isFirst) {
+				this->lowestCostHalfEdgeID = he_it->idx();
+				isFirst = false;
+				lowestHeCost = model.mesh.property(this->heCost, *he_it);
+			}
+			else if ((model.mesh.property(this->heCost, *he_it) < lowestHeCost)) {
+				this->lowestCostHalfEdgeID = he_it->idx();
+				lowestHeCost = model.mesh.property(this->heCost, *he_it);
+			}
+		}
+		
+	}
+
+	// init different rate of simplification models from the SSM algorithm
+
+}
+
+// total cost on halfedge
+float MeshObject::F(MyMesh::HalfedgeHandle heh, bool isInit) {
+	// i->j
+	MyMesh::VertexHandle vhi = model.mesh.from_vertex_handle(heh);
+	MyMesh::VertexHandle vhj = model.mesh.to_vertex_handle(heh);
+
+	// init shape cost
+	// shapeCost = Fi(vj) + Fj(vj)
+	MyMesh::Point pi = model.mesh.point(vhi);
+	glm::vec4 vi = glm::vec4(pi[0], pi[1], pi[2], 1);
+	glm::mat4 Qi = model.mesh.property(this->quadricMat, vhi);
+
+	MyMesh::Point pj = model.mesh.point(vhj);
+	glm::vec4 vj = glm::vec4(pj[0], pj[1], pj[2], 1);
+	glm::mat4 Qj = model.mesh.property(this->quadricMat, vhj);
+
+	// Fivj = (vj(T) * Qi * vj)
+	// as glm doesn't provide vector * matrix from the left
+	// so v(T) * Qi = (Qi * vj(T))(T) --> 1X4 vector
+	// 1X4 vector * 4X1 vector = dot product
+	float Fivj = glm::dot(glm::transpose(Qi) * vj, vj);
+	float Fjvj = glm::dot(glm::transpose(Qj) * vj, vj);
+	float shapeCost = Fivj + Fjvj;
+
+	// init sampling cost
+	float samplingCost = 0;
+	if (isInit) {
+		samplingCost = glm::distance(vi, vj) * model.mesh.property(this->totalDistance, vhi);
+	}
+	else {
+		// we recalculate the sampling cost
+		for (MyMesh::VertexVertexCWIter vv_it = model.mesh.vv_cwbegin(vhi); vv_it != model.mesh.vv_cwend(vhi); vv_it++) {
+			MyMesh::VertexHandle vhTemp = *vv_it;
+			MyMesh::Point pTemp = model.mesh.point(vhTemp);
+			glm::vec4 vTemp = glm::vec4(pTemp[0], pTemp[1], pTemp[2], 1);
+			samplingCost += glm::distance(vi, vTemp);
+		}
+		samplingCost *= glm::distance(vi, vj);
+	}
+		
+	// return the reuslt
+	return shapeCost + samplingCost;
+}
+
+// simplify the mesh with SSM algorithm
+void MeshObject::SimplifyMeshMMSOnce() {
+	// collapse the halfedge
+	MyMesh::HalfedgeHandle hehToCollapse = model.mesh.halfedge_handle(this->lowestCostHalfEdgeID);
+	MyMesh::VertexHandle vhj = model.mesh.to_vertex_handle(hehToCollapse);
+	MyMesh::VertexHandle vhi = model.mesh.from_vertex_handle(hehToCollapse);
+	// update the quadratic matrix
+	model.mesh.property(this->quadricMat, vhj) += model.mesh.property(this->quadricMat, vhi);
+	model.mesh.collapse(hehToCollapse);
+
+	// reupdate all cost of the halfedge around the collapsed vertex
+	// record which halfedge to collapsed next
+	bool isFirst = true;
+	double lowestHeCost;
+	this->lowestCostHalfEdgeID = -1;
+	// update the cost to the halfedge of adjadent outgoing halfedges
+	// save the lowest cost id from the adjadent outgoing halfedges
+	for (MyMesh::VertexOHalfedgeCWIter ohe_it = model.mesh.voh_cwbegin(vhj); ohe_it != model.mesh.voh_cwend(vhj); ohe_it++) {
+		model.mesh.property(this->heCost, *ohe_it) = this->F(*ohe_it, false);
+
+		// determine the lowestCostHalfEdgeID
+		if (model.mesh.is_collapse_ok(*ohe_it)) {
+			if (isFirst) {
+				this->lowestCostHalfEdgeID = ohe_it->idx();
+				isFirst = false;
+				lowestHeCost = model.mesh.property(this->heCost, *ohe_it);
+			}
+			else if ((model.mesh.property(this->heCost, *ohe_it) < lowestHeCost)) {
+				this->lowestCostHalfEdgeID = ohe_it->idx();
+				lowestHeCost = model.mesh.property(this->heCost, *ohe_it);
+			}
+		}
+	}
+
+	// update the cost to the halfedge of adjadent ingoing halfedges
+	// save the lowest cost id from the adjadent ingoing halfedges
+	for (MyMesh::VertexIHalfedgeCWIter ihe_it = model.mesh.vih_cwbegin(vhj); ihe_it != model.mesh.vih_cwend(vhj); ihe_it++) {
+		model.mesh.property(this->heCost, *ihe_it) = this->F(*ihe_it, false);
+
+		// determine the lowestCostHalfEdgeID
+		if (model.mesh.is_collapse_ok(*ihe_it) && (model.mesh.property(this->heCost, *ihe_it) < lowestHeCost)) {
+			this->lowestCostHalfEdgeID = ihe_it->idx();
+			lowestHeCost = model.mesh.property(this->heCost, *ihe_it);
+		}
+	}
+}
 #pragma endregion
