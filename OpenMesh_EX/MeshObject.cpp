@@ -90,13 +90,12 @@ bool GLMesh::LoadModel(std::string fileName)
 
 void GLMesh::LoadToShader()
 {
+	// face render part
 	std::vector<MyMesh::Point> vertices;
 	vertices.reserve(mesh.n_vertices());
 	for (MyMesh::VertexIter v_it = mesh.vertices_begin(); v_it != mesh.vertices_end(); ++v_it)
 	{
 		vertices.push_back(mesh.point(*v_it));
-
-		//MyMesh::Point p = mesh.point(*v_it);
 	}
 
 	std::vector<MyMesh::Normal> normals;
@@ -137,6 +136,31 @@ void GLMesh::LoadToShader()
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
+
+	// line render part
+	vertices.clear();
+	vertices.reserve(mesh.n_edges() * 2);
+	for (MyMesh::EdgeIter e_it = mesh.edges_begin(); e_it != mesh.edges_end(); ++e_it)
+	{
+		MyMesh::HalfedgeHandle heh = mesh.halfedge_handle(*e_it, 0);
+
+		vertices.push_back(mesh.point(mesh.from_vertex_handle(heh)));
+		vertices.push_back(mesh.point(mesh.to_vertex_handle(heh)));
+	}
+
+	glGenVertexArrays(1, &lineVAO);
+	glBindVertexArray(lineVAO);
+
+	GLuint lineVBO;
+	glGenBuffers(1, &lineVBO);
+	glBindBuffer(GL_ARRAY_BUFFER, lineVBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(MyMesh::Point) * vertices.size(), &vertices[0], GL_STATIC_DRAW);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+	glEnableVertexAttribArray(0);
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+
 }
 
 #pragma endregion
@@ -172,14 +196,16 @@ bool MeshObject::Init(std::string fileName)
 	models.reserve(101);
 
 	// start to initial the qem model
-	this->InitQEM();
+	// this->InitQEM();
 	// start to initial the parameterization
 	// start to initial the ssm model
+	this->InitSSM();
 
+	CollapseRecalculated = false;
 
-	this->currentIDToRender = -1;
+	/*this->currentIDToRender = -1;
 	this->SetRate(0);
-	model.mesh.garbage_collection();
+	model.mesh.garbage_collection();*/
 
 	return retV;
 }
@@ -197,35 +223,46 @@ void MeshObject::Render(Shader shader)
 void MeshObject::RenderPoint(Shader shader) {
 	shader.use();
 
-	glBindVertexArray(model.vao);
-	glDrawElements(GL_POINTS, model.mesh.n_vertices(), GL_UNSIGNED_INT, 0);
+	glBindVertexArray(this->modelToRender->lineVAO);
+	glDrawElements(GL_POINTS, this->model.mesh.n_vertices(), GL_UNSIGNED_INT, 0);
+	glBindVertexArray(0);
+}
+
+void MeshObject::RenderLine(Shader shader) {
+	shader.use();
+
+	glBindVertexArray(this->modelToRender->lineVAO);
+	glDrawArrays(GL_LINES, 0, model.mesh.n_edges() * 2);
 	glBindVertexArray(0);
 }
 
 // debug used
 void MeshObject::DebugRender(Shader shader) {
-	if(!CollapseRecalculated)	this->RecalculateCollapseVerticesToRender();
+	if(!CollapseRecalculated)	this->SSMRecalculateCollapseVerticesToRender();
 	shader.use();
 
 	std::vector<MyMesh::Point> vertices;
-	vertices.reserve(CollapseVerticesToRender.size() * 3);
+	vertices.reserve(CollapseVerticesToRender.size());
 	for (int i = 0; i < CollapseVerticesToRender.size(); i++) {
 		vertices.push_back(model.mesh.point(CollapseVerticesToRender[i]));
 	}
 
-	GLuint tempEbo;
-	glGenBuffers(1, &tempEbo);
-	glBindBuffer(GL_ARRAY_BUFFER, tempEbo);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(MyMesh::Point) * vertices.size(), &vertices[0], GL_STATIC_DRAW);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-	glEnableVertexAttribArray(0);
+	if (vertices.size() != 0) {
+		GLuint tempEbo;
+		glGenBuffers(1, &tempEbo);
+		glBindBuffer(GL_ARRAY_BUFFER, tempEbo);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(MyMesh::Point) * vertices.size(), &vertices[0], GL_STATIC_DRAW);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+		glEnableVertexAttribArray(0);
+
+		glDrawArrays(GL_POINTS, 0, vertices.size());
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+	}
 	
-	glDrawArrays(GL_POINTS, 0, vertices.size());
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
 // debug used
-void MeshObject::RecalculateCollapseVerticesToRender() {
+void MeshObject::QEMRecalculateCollapseVerticesToRender() {
 	CollapseVerticesToRender.clear();
 
 	// for each edge collapse
@@ -247,6 +284,16 @@ void MeshObject::RecalculateCollapseVerticesToRender() {
 	for (MyMesh::VVCWIter vv_it = model.mesh.vv_cwbegin(vh1); vv_it != model.mesh.vv_cwend(vh1); vv_it++) {
 		CollapseVerticesToRender.push_back(*vv_it);
 	}
+
+	CollapseRecalculated = true;
+}
+
+void MeshObject::SSMRecalculateCollapseVerticesToRender() {
+	CollapseVerticesToRender.clear();
+
+	MyMesh::HalfedgeHandle heh = model.mesh.halfedge_handle(this->lowestCostHalfEdgeID);
+	CollapseVerticesToRender.push_back(model.mesh.from_vertex_handle(heh));
+	CollapseVerticesToRender.push_back(model.mesh.to_vertex_handle(heh));
 
 	CollapseRecalculated = true;
 }
@@ -519,10 +566,7 @@ void MeshObject::SimplifyMeshQEMOnce(SimplificationMode mode) {
 
 void MeshObject::SimplifyMeshQEM(SimplificationMode mode, int faceLeft, int simplifiedRate)
 {
-	// fileToWrite << "Simplified Rate => " << simplifiedRate << "\n";
-
 	std::set<EdgeInfo>::iterator s_it;
-
 	// recheck whether the we reached the total edges number should be
 	while (this->GetUndeletedFacesNumber() > faceLeft) {
 		// for each edge collapse
@@ -657,7 +701,6 @@ void MeshObject::SimplifyMeshQEM(SimplificationMode mode, int faceLeft, int simp
 		}
 	}
 
-	// fileToWrite << "\n";
 }
 
 int MeshObject::GetUndeletedFacesNumber() {
@@ -1158,7 +1201,7 @@ float MeshObject::F(MyMesh::HalfedgeHandle heh, bool isInit) {
 	}
 		
 	// return the reuslt
-	return shapeCost + samplingCost;
+	return shapeCost + 0.1 * samplingCost;
 }
 
 // simplify the mesh with SSM algorithm
@@ -1206,5 +1249,10 @@ void MeshObject::SimplifyMeshMMSOnce() {
 			lowestHeCost = model.mesh.property(this->heCost, *ihe_it);
 		}
 	}
+
+
+	CollapseRecalculated = false;
+	model.mesh.garbage_collection();
+	model.LoadToShader();
 }
 #pragma endregion

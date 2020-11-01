@@ -33,9 +33,13 @@ public:
 	void Render();
 
 	MyMesh mesh;
+	
 	GLuint vao;
 	GLuint ebo;
 	GLuint vboVertices, vboNormal;
+
+	GLuint lineVAO;
+
 	void LoadToShader();
 
 private:
@@ -85,6 +89,7 @@ public:
 	bool Init(std::string fileName);
 	void Render(Shader shader);
 	void RenderPoint(Shader shader);
+	void RenderLine(Shader shader);
 
 	// debug
 	void DebugRender(Shader shader);
@@ -170,7 +175,8 @@ private:
 #pragma endregion
 
 	// debug purpose
-	void RecalculateCollapseVerticesToRender();
+	void QEMRecalculateCollapseVerticesToRender();
+	void SSMRecalculateCollapseVerticesToRender();
 	std::vector<MyMesh::VertexHandle> CollapseVerticesToRender;
 	bool CollapseRecalculated;
 };
