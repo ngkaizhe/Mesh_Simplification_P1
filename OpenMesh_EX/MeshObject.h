@@ -89,15 +89,19 @@ public:
 	// debug
 	void DebugRender(Shader shader);
 
-	int GetVerticesNumber();
-	int GetEdgesNumber();
-	int GetFacesNumber();
 	void SetRate(int rate);
 
 	// the current model to be render
 	GLMesh* modelToRender;
 	// decrease the vertex number
-	void SimplifyMeshOnce(SimplificationMode mode);
+	void SimplifyMeshQEMOnce(SimplificationMode mode);
+
+#pragma region Get Mesh Info
+	int GetVerticesNumber();
+	int GetEdgesNumber();
+	int GetFacesNumber();
+	int GetModelsSize();
+#pragma endregion
 
 #pragma region Skeleton Extraction
 	/*  Skeleton Extraction*/
@@ -115,13 +119,6 @@ private:
 	// self timer
 	MyTimer tGlobal;
 
-	// some added properties
-	OpenMesh::VPropHandleT<glm::mat4> quadricMat;
-	OpenMesh::EPropHandleT<double> cost;
-
-	// heap with minimum cost in front
-	std::set<EdgeInfo> heap;
-
 	// the original model
 	GLMesh model;
 	// the model to be save in all rate
@@ -129,18 +126,23 @@ private:
 	// mesh simplify rate(id)
 	int currentIDToRender;
 
-	// file ofstream
-	std::ofstream fileToWrite;
+#pragma region Mesh Simplification QEM
+	// some added properties
+	OpenMesh::VPropHandleT<glm::mat4> quadricMat;
+	OpenMesh::EPropHandleT<double> cost;
 
+	// heap with minimum cost in front
+	std::set<EdgeInfo> heap;
+
+	// init heap and quadratic
+	// init all simplification rate models
+	void InitQEM();
+
+	// helper function for lazy deletion
 	int GetUndeletedFacesNumber();
-
 	// helper function for init
 	// decrease the vertex number
-	void SimplifyMesh(SimplificationMode mode, int vertices_left, int simplifyRate);
-	// init heap and quadratic
-	void InitProperties();
-	// init all simplification rate models
-	void InitModels();
+	void SimplifyMeshQEM(SimplificationMode mode, int vertices_left, int simplifyRate);
 	// init vertices quadratic property
 	void InitVerticesQuadratic();
 	// check whether the edge is an concave edge
@@ -149,6 +151,8 @@ private:
 	void SetCost(MyMesh::EdgeHandle eh);
 	// rearrange the heap
 	void RearrangeHeap();
+
+#pragma endregion
 
 	// debug purpose
 	void RecalculateCollapseVerticesToRender();

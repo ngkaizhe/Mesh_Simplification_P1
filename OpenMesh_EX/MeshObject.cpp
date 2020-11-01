@@ -160,109 +160,21 @@ bool MeshObject::Init(std::string fileName)
 	// init modelToRender
 	this->modelToRender = &model;
 
+	// init models
 	models.clear();
 	models.reserve(101);
-	this->InitProperties();
 
-	//// start to initial the models
-	this->InitModels();
+	// start to initial the qem model
+	this->InitQEM();
+	// start to initial the parameterization
+	// start to initial the ssm model
+
+
 	this->currentIDToRender = -1;
 	this->SetRate(0);
-
 	model.mesh.garbage_collection();
 
 	return retV;
-}
-
-void MeshObject::InitProperties() {
-	this->InitVerticesQuadratic();
-
-	// initial the cost of all edge handle
-	for (MyMesh::EdgeIter e_it = model.mesh.edges_begin(); e_it != model.mesh.edges_end(); e_it++) {
-		this->SetCost(*e_it);
-	}
-
-	// sort the heap
-	this->RearrangeHeap();
-	std::cout << "Init finish arrange heap\n";
-	tGlobal.Flag();
-
-	CollapseRecalculated = false;
-}
-
-void MeshObject::InitModels() {
-	int lowestPercentage = 1;
-	int lowestFaceNumber = lowestPercentage / 100.0 * this->model.mesh.n_faces();
-	int highestFaceNumber = this->model.mesh.n_faces();
-	int faceDiff = highestFaceNumber - lowestFaceNumber;
-
-	for (int i = 0; i < 100; i++) {
-
-		// save the initial state first
-		GLMesh tModel = model;
-		tModel.mesh.garbage_collection();
-		tModel.LoadToShader();
-		models.push_back(tModel);
-
-		// MyTimer tTemp;
-		// for each rate we wish to decrease the original model
-		//tTemp.Start("Model Simplification Rate " + std::to_string(i) + "% Start");
-		std::cout << "Model Simplification Rate " + std::to_string(i) + "% Start\n";
-		this->SimplifyMesh(SimplificationMode::SmallestError, this->GetUndeletedFacesNumber() - (faceDiff / 100), i);
-		//tTemp.Flag("Model Simplification Rate " + std::to_string(i) + "% Done");
-		std::cout << "Model Simplification Rate " + std::to_string(i) + "% Done\n\n";
-	}
-
-	// save the final state
-	GLMesh tModel = model;
-	tModel.mesh.garbage_collection();
-	tModel.LoadToShader();
-	models.push_back(tModel);
-
-	tGlobal.Flag("Simplify all model finish!");
-}
-
-void MeshObject::InitVerticesQuadratic() {
-	// initial the quadric matrix for each vertex to 0.0
-	for (MyMesh::VertexIter v_it = model.mesh.vertices_sbegin(); v_it != model.mesh.vertices_end(); v_it++) {
-		model.mesh.property(this->quadricMat, *v_it) = glm::mat4(0.0);
-	}
-
-	// initial the quadric matrix for each vertices
-	for (MyMesh::FaceIter f_it = model.mesh.faces_sbegin(); f_it != model.mesh.faces_end(); f_it++) {
-		MyMesh::FaceHandle fh = *f_it;
-		// run through each vertices the face have
-		glm::mat4 Kp = glm::mat4(0.0);
-		bool KpCalculated = false;
-		for (MyMesh::FVCWIter fv_it = model.mesh.fv_cwbegin(fh); fv_it != model.mesh.fv_cwend(fh); fv_it++) {
-			MyMesh::VertexHandle vh = *fv_it;
-
-			// the Kp of same planes should be same
-			if (!KpCalculated) {
-				KpCalculated = true;
-				// we need the plane equation of the face, 
-				// get the plane normal
-				// get the normal of face in the point form
-				MyMesh::Point nPF = model.mesh.normal(fh);
-				// convert the normal into glm form and normalized it
-				glm::vec3 n = glm::vec3(nPF[0], nPF[1], nPF[2]);
-				// n = <a, b, c> which a^2 + b^2 + c^2 = 1
-				n = glm::normalize(n);
-
-				// get the point which is on the plane(that is the center point)
-				// point = (x0, y0, z0)
-				MyMesh::Point vPF = model.mesh.point(vh);
-				// plane equation -> ax + by + cz - (ax0 + by0 + cz0) = 0
-				glm::vec4 p = glm::vec4(n[0], n[1], n[2], -(n[0] * vPF[0] + n[1] * vPF[1] + n[2] * vPF[2]));
-
-				// get the fundamental error quadric
-				Kp = glm::outerProduct(p, p);
-			}
-
-			// update each vertices' quadratic mat property
-			model.mesh.property(this->quadricMat, vh) += Kp;
-		}
-	}
 }
 
 void MeshObject::Render(Shader shader)
@@ -340,6 +252,7 @@ void MeshObject::SetRate(int rate) {
 	}
 }
 
+#pragma region Get Mesh Info
 int MeshObject::GetVerticesNumber() {
 	return modelToRender->mesh.n_vertices();
 }
@@ -352,7 +265,105 @@ int MeshObject::GetFacesNumber() {
 	return modelToRender->mesh.n_faces();
 }
 
-void MeshObject::SimplifyMeshOnce(SimplificationMode mode) {
+int MeshObject::GetModelsSize() {
+	return this->models.size();
+}
+
+#pragma endregion
+
+#pragma region Mesh Simplification QEM
+void MeshObject::InitQEM() {
+	// init properties
+	this->InitVerticesQuadratic();
+
+	// initial the cost of all edge handle
+	for (MyMesh::EdgeIter e_it = model.mesh.edges_begin(); e_it != model.mesh.edges_end(); e_it++) {
+		this->SetCost(*e_it);
+	}
+
+	// sort the heap
+	this->RearrangeHeap();
+	std::cout << "Init finish arrange heap\n";
+	tGlobal.Flag();
+
+	CollapseRecalculated = false;
+
+	// init models for qem simplify mesh
+	int lowestPercentage = 1;
+	int lowestFaceNumber = lowestPercentage / 100.0 * this->model.mesh.n_faces();
+	int highestFaceNumber = this->model.mesh.n_faces();
+	int faceDiff = highestFaceNumber - lowestFaceNumber;
+
+	for (int i = 0; i < 100; i++) {
+
+		// save the initial state first
+		GLMesh tModel = model;
+		tModel.mesh.garbage_collection();
+		tModel.LoadToShader();
+		models.push_back(tModel);
+
+		// MyTimer tTemp;
+		// for each rate we wish to decrease the original model
+		// tTemp.Start("Model Simplification Rate " + std::to_string(i) + "% Start");
+		std::cout << "Model Simplification Rate " + std::to_string(i) + "% Start\n";
+		this->SimplifyMeshQEM(SimplificationMode::SmallestError, this->GetUndeletedFacesNumber() - (faceDiff / 100), i);
+		//tTemp.Flag("Model Simplification Rate " + std::to_string(i) + "% Done");
+		std::cout << "Model Simplification Rate " + std::to_string(i) + "% Done\n\n";
+	}
+
+	// save the final state
+	GLMesh tModel = model;
+	tModel.mesh.garbage_collection();
+	tModel.LoadToShader();
+	models.push_back(tModel);
+
+	tGlobal.Flag("Simplify all model finish!");
+}
+
+void MeshObject::InitVerticesQuadratic() {
+	// initial the quadric matrix for each vertex to 0.0
+	for (MyMesh::VertexIter v_it = model.mesh.vertices_sbegin(); v_it != model.mesh.vertices_end(); v_it++) {
+		model.mesh.property(this->quadricMat, *v_it) = glm::mat4(0.0);
+	}
+
+	// initial the quadric matrix for each vertices
+	for (MyMesh::FaceIter f_it = model.mesh.faces_sbegin(); f_it != model.mesh.faces_end(); f_it++) {
+		MyMesh::FaceHandle fh = *f_it;
+		// run through each vertices the face have
+		glm::mat4 Kp = glm::mat4(0.0);
+		bool KpCalculated = false;
+		for (MyMesh::FVCWIter fv_it = model.mesh.fv_cwbegin(fh); fv_it != model.mesh.fv_cwend(fh); fv_it++) {
+			MyMesh::VertexHandle vh = *fv_it;
+
+			// the Kp of same planes should be same
+			if (!KpCalculated) {
+				KpCalculated = true;
+				// we need the plane equation of the face, 
+				// get the plane normal
+				// get the normal of face in the point form
+				MyMesh::Point nPF = model.mesh.normal(fh);
+				// convert the normal into glm form and normalized it
+				glm::vec3 n = glm::vec3(nPF[0], nPF[1], nPF[2]);
+				// n = <a, b, c> which a^2 + b^2 + c^2 = 1
+				n = glm::normalize(n);
+
+				// get the point which is on the plane(that is the center point)
+				// point = (x0, y0, z0)
+				MyMesh::Point vPF = model.mesh.point(vh);
+				// plane equation -> ax + by + cz - (ax0 + by0 + cz0) = 0
+				glm::vec4 p = glm::vec4(n[0], n[1], n[2], -(n[0] * vPF[0] + n[1] * vPF[1] + n[2] * vPF[2]));
+
+				// get the fundamental error quadric
+				Kp = glm::outerProduct(p, p);
+			}
+
+			// update each vertices' quadratic mat property
+			model.mesh.property(this->quadricMat, vh) += Kp;
+		}
+	}
+}
+
+void MeshObject::SimplifyMeshQEMOnce(SimplificationMode mode) {
 	model.mesh.garbage_collection();
 	RearrangeHeap();
 	modelToRender = &model;
@@ -499,7 +510,7 @@ void MeshObject::SimplifyMeshOnce(SimplificationMode mode) {
 
 }
 
-void MeshObject::SimplifyMesh(SimplificationMode mode, int faceLeft, int simplifiedRate)
+void MeshObject::SimplifyMeshQEM(SimplificationMode mode, int faceLeft, int simplifiedRate)
 {
 	// fileToWrite << "Simplified Rate => " << simplifiedRate << "\n";
 
@@ -727,6 +738,9 @@ void MeshObject::RearrangeHeap()
 	}
 }
 
+#pragma endregion
+
+#pragma region Skeleton Extraction
 double MeshObject::calcAreaOfThreePoints(MyMesh::Point& a, MyMesh::Point& b, MyMesh::Point& c) {
 	double lenA = sqrt(pow(b[0] - c[0], 2) + pow(b[1] - c[1], 2) + pow(b[2] - c[2], 2));
 	double lenB = sqrt(pow(a[0] - c[0], 2) + pow(a[1] - c[1], 2) + pow(a[2] - c[2], 2));
@@ -747,7 +761,6 @@ MyMesh::Point& MeshObject::GetLaplacianOperator(MyMesh& mesh, MyMesh::VertexIter
 	}
 	return vi - result / count;
 }
-
 
 double MeshObject::GetOneRingArea(MyMesh& mesh, MyMesh::VertexIter& v_it, OpenMesh::FPropHandleT<double>& areaArr, OpenMesh::FPropHandleT<int>& timeId, int it) {
 	double area = 0;
@@ -1024,3 +1037,5 @@ void MeshObject::Parameterization()
 	}
 	model.LoadToShader();
 }
+
+#pragma endregion

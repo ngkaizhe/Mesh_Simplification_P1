@@ -530,7 +530,7 @@ private: System::Void hkoglPanelControl1_KeyPress(System::Object^ sender, System
 
 	if ((unsigned char)e->KeyChar == ' ') {
 		// simplify mesh
-		meshObjectPtr->SimplifyMeshOnce(SimplificationMode::SmallestError);
+		meshObjectPtr->SimplifyMeshQEMOnce(SimplificationMode::SmallestError);
 	}
 
 	else if ((unsigned char)e->KeyChar == '1') {
@@ -538,7 +538,7 @@ private: System::Void hkoglPanelControl1_KeyPress(System::Object^ sender, System
 		meshObjectPtr->SetRate(rate);
 	}
 	else if ((unsigned char)e->KeyChar == '2') {
-		if(rate < 100) rate += 1;
+		if(rate < meshObjectPtr->GetModelsSize() - 1) rate += 1;
 		meshObjectPtr->SetRate(rate);
 	}
 
