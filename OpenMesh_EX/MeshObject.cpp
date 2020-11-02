@@ -198,8 +198,9 @@ bool MeshObject::Init(std::string fileName)
 	// start to initial the qem model
 	// this->InitQEM();
 	// start to initial the parameterization
+	// this->InitSE();
 	// start to initial the ssm model
-	this->InitSSM();
+	// this->InitSSM();
 
 	CollapseRecalculated = false;
 
@@ -791,6 +792,16 @@ void MeshObject::RearrangeHeap()
 #pragma endregion
 
 #pragma region Skeleton Extraction
+void MeshObject::InitSE() {
+	if (models.size() > 90) {
+		this->model = models[90];
+	}
+
+	Parameterization();
+	this->model.mesh.garbage_collection();
+	this->model.LoadToShader();
+}
+
 double MeshObject::calcAreaOfThreePoints(MyMesh::Point& a, MyMesh::Point& b, MyMesh::Point& c) {
 	double lenA = sqrt(pow(b[0] - c[0], 2) + pow(b[1] - c[1], 2) + pow(b[2] - c[2], 2));
 	double lenB = sqrt(pow(a[0] - c[0], 2) + pow(a[1] - c[1], 2) + pow(a[2] - c[2], 2));
@@ -834,8 +845,9 @@ double MeshObject::GetOneRingArea(MyMesh& mesh, MyMesh::VertexIter& v_it, OpenMe
 void MeshObject::Parameterization()
 {
 	std::cout << "Parameterization" << std::endl;
-	int iterNum = 1;
-	float SL = 0.9f;
+	float power = 7.0;
+	int iterNum = 2;
+	float SL = 2.5f;
 	double W_L = 0;
 	double totalArea = 0;
 	/*
@@ -952,7 +964,7 @@ void MeshObject::Parameterization()
 		//std::cout << "total Area : " << totalArea << std::endl;
 		//std::cout << "Fn : " << fn << std::endl;
 		if (it == 0)
-			W_L =  10.0f*sqrt(totalArea/fn);
+			W_L =  power * sqrt(totalArea/fn);
 		else
 			W_L = SL * W_L;
 		std::cout << "W_L : " << W_L << std::endl;
@@ -1085,7 +1097,6 @@ void MeshObject::Parameterization()
 
 		// solve linear system
 	}
-	model.LoadToShader();
 }
 
 #pragma endregion

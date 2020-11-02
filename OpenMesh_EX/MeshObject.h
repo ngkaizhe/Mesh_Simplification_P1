@@ -111,6 +111,8 @@ public:
 #pragma endregion
 
 #pragma region Skeleton Extraction
+	void InitSE();
+
 	/*  Skeleton Extraction*/
 	void Parameterization();
 

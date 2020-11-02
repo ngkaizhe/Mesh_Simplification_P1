@@ -513,7 +513,7 @@ private: System::Void hkoglPanelControl1_Paint(System::Object^  sender, System::
 		meshObjectPtr->Render(shader);
 		// point
 		shader.setUniform3fv("color", glm::vec3(0.0f, 0.0f, 1.0f));
-		meshObjectPtr->DebugRender(shader);
+		// meshObjectPtr->DebugRender(shader);
 	}
 }
 
@@ -529,7 +529,7 @@ private: System::Void hkoglPanelControl1_KeyPress(System::Object^ sender, System
 
 	if ((unsigned char)e->KeyChar == ' ') {
 		// simplify mesh
-		meshObjectPtr->SimplifyMeshMMSOnce();
+		meshObjectPtr->InitSE();
 	}
 
 	else if ((unsigned char)e->KeyChar == '1') {
