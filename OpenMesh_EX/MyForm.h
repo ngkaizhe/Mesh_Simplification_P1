@@ -504,13 +504,13 @@ private: System::Void hkoglPanelControl1_Paint(System::Object^  sender, System::
 
 	// render twice
 	if (meshInited) {
-		// render line / wireframe
-		shader.setUniform3fv("color", glm::vec3(0.0f, 0.0f, 0.0f));
-		meshObjectPtr->RenderLine(shader);
 		// fill
 		shader.setUniform3fv("color", glm::vec3(1.0f, 1.0f, 0.0f));
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 		meshObjectPtr->Render(shader);
+		// render line / wireframe
+		shader.setUniform3fv("color", glm::vec3(0.0f, 0.0f, 0.0f));
+		meshObjectPtr->RenderLine(shader);
 		// point
 		shader.setUniform3fv("color", glm::vec3(0.0f, 0.0f, 1.0f));
 		// meshObjectPtr->DebugRender(shader);
@@ -599,15 +599,14 @@ private: System::Void saveModelDialog_FileOk(System::Object^  sender, System::Co
 {
 	std::string filename;
 	MarshalString(saveModelDialog->FileName, filename);
-
 	// do save file action
 	if (!OpenMesh::IO::write_mesh(meshObjectPtr->modelToRender->mesh, filename))
 	{
 		std::cerr << "write error\n";
 		exit(1);
 	}
-
 }
+
 private: System::Void timer1_Tick(System::Object^ sender, System::EventArgs^ e) {
 	// update the opengl's render
 	hkoglPanelControl1->Invalidate();

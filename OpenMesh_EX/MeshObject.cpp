@@ -196,7 +196,7 @@ bool MeshObject::Init(std::string fileName)
 	models.reserve(101);
 
 	// start to initial the qem model
-	// this->InitQEM();
+	this->InitQEM();
 	// start to initial the parameterization
 	// this->InitSE();
 	// start to initial the ssm model
@@ -204,9 +204,9 @@ bool MeshObject::Init(std::string fileName)
 
 	CollapseRecalculated = false;
 
-	/*this->currentIDToRender = -1;
+	this->currentIDToRender = -1;
 	this->SetRate(0);
-	model.mesh.garbage_collection();*/
+	model.mesh.garbage_collection();
 
 	return retV;
 }
@@ -233,7 +233,7 @@ void MeshObject::RenderLine(Shader shader) {
 	shader.use();
 
 	glBindVertexArray(this->modelToRender->lineVAO);
-	glDrawArrays(GL_LINES, 0, model.mesh.n_edges() * 2);
+	glDrawArrays(GL_LINES, 0, this->modelToRender->mesh.n_edges() * 2);
 	glBindVertexArray(0);
 }
 
@@ -343,7 +343,13 @@ void MeshObject::InitQEM() {
 
 	CollapseRecalculated = false;
 
-	// init models for qem simplify mesh
+	// init modelToRender
+	this->modelToRender = &model;
+
+	// start to initial the models
+	models.clear();
+	models.reserve(101);
+
 	int lowestPercentage = 1;
 	int lowestFaceNumber = lowestPercentage / 100.0 * this->model.mesh.n_faces();
 	int highestFaceNumber = this->model.mesh.n_faces();
@@ -800,6 +806,8 @@ void MeshObject::InitSE() {
 	Parameterization();
 	this->model.mesh.garbage_collection();
 	this->model.LoadToShader();
+
+	this->modelToRender = &model;
 }
 
 double MeshObject::calcAreaOfThreePoints(MyMesh::Point& a, MyMesh::Point& b, MyMesh::Point& c) {
@@ -823,7 +831,7 @@ MyMesh::Point& MeshObject::GetLaplacianOperator(MyMesh& mesh, MyMesh::VertexIter
 	return vi - result / count;
 }
 
-double MeshObject::GetOneRingArea(MyMesh& mesh, MyMesh::VertexIter& v_it, OpenMesh::FPropHandleT<double>& areaArr, OpenMesh::FPropHandleT<int>& timeId, int it) {
+double MeshObject::GetOneRingArea(MyMesh& mesh, MyMesh::VertexIter& v_it) {
 	double area = 0;
 	for (MyMesh::VertexFaceIter vf_it = mesh.vf_iter(*v_it); vf_it.is_valid(); ++vf_it)
 	{
@@ -832,21 +840,23 @@ double MeshObject::GetOneRingArea(MyMesh& mesh, MyMesh::VertexIter& v_it, OpenMe
 		MyMesh::Point& Q = mesh.point(*fv_it);  ++fv_it;
 		MyMesh::Point& R = mesh.point(*fv_it);
 		double a = calcAreaOfThreePoints(P, Q, R);
-		//if (mesh.property(areaArr, *vf_it) == 0 || mesh.property(timeId, *vf_it) != it) {
-		mesh.property(areaArr, *vf_it) = a;
-			//mesh.property(timeId, *vf_it) = it;
-		//}
-		
 		area += a;
 	}
+	if (!isfinite(area))
+		return 0.00000001;
 	return area;
 }
 
 void MeshObject::Parameterization()
 {
 	std::cout << "Parameterization" << std::endl;
-	float power = 7.0;
+	/* Best Case
+	iterNum = 2
+	power = 7.0f
+	SL = 2.5f
+	*/
 	int iterNum = 2;
+	double power = 7.0f;
 	float SL = 2.5f;
 	double W_L = 0;
 	double totalArea = 0;
@@ -876,6 +886,10 @@ void MeshObject::Parameterization()
 	for (int it = 0; it < iterNum; it++) {
 		std::cout << "Iter index : " << it << std::endl;
 
+		double onering_area = GetOneRingArea(mesh, mesh.vertices_begin());
+		if (!isfinite(onering_area))
+			break;
+		std::cout << "onering_area : " << onering_area << std::endl;
 		//std::cout << "V count : " << count << std::endl;
 		//mesh.request_vertex_texcoords2D();
 		std::cout << "Start calculate weight!" << std::endl;
@@ -917,12 +931,6 @@ void MeshObject::Parameterization()
 				MyMesh::HalfedgeHandle _heh = mesh.halfedge_handle(*e_it, 0);
 				mesh.property(weight, _heh) = 0;
 				mesh.property(weight, mesh.opposite_halfedge_handle(_heh)) =0;
-				/*
-				//find select mesh boundary 
-				if (!heh.is_valid())
-				{
-					heh = mesh.halfedge_handle(*e_it, 1);
-				}*/
 			}
 		}
 		std::cout << "Calculate weight finish!\n" << std::endl;
@@ -941,7 +949,7 @@ void MeshObject::Parameterization()
 				}
 				else
 				{
-					double onering_area = GetOneRingArea(mesh, v_it, area, timeId, it);
+					double onering_area = GetOneRingArea(mesh, v_it);
 					mesh.property(or_area, *v_it) = onering_area;
 					mesh.property(matrixIndex, *v_it) = count++;
 				}
@@ -1002,7 +1010,7 @@ void MeshObject::Parameterization()
 				}
 				else   //wH^t+1 = wH^t * sqrt(A^0 / A^t)
 				{
-					double onering_area = GetOneRingArea(mesh, v_it, area, timeId, it);
+					double onering_area = GetOneRingArea(mesh, v_it);
 					W_H = sqrt(mesh.property(or_area, *v_it) / onering_area);
 				}
 				int i = mesh.property(matrixIndex, *v_it);

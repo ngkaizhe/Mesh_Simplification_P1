@@ -120,7 +120,7 @@ public:
 
 	double calcAreaOfThreePoints(MyMesh::Point& a, MyMesh::Point& b, MyMesh::Point& c);
 
-	double GetOneRingArea(MyMesh& mesh, MyMesh::VertexIter& v_it, OpenMesh::FPropHandleT<double>& areaArr, OpenMesh::FPropHandleT<int>& timeId, int it);
+	double GetOneRingArea(MyMesh& mesh, MyMesh::VertexIter& v_it);
 	// decrease the vertex number 
 #pragma endregion
 
