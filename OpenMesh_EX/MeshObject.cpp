@@ -350,19 +350,18 @@ void MeshObject::InitQEM() {
 	models.clear();
 	models.reserve(101);
 
+	// save the initial state first
+	GLMesh tModel = model;
+	tModel.mesh.garbage_collection();
+	tModel.LoadToShader();
+	models.push_back(tModel);
+
 	int lowestPercentage = 1;
 	int lowestFaceNumber = lowestPercentage / 100.0 * this->model.mesh.n_faces();
 	int highestFaceNumber = this->model.mesh.n_faces();
 	int faceDiff = highestFaceNumber - lowestFaceNumber;
 
 	for (int i = 0; i < 100; i++) {
-
-		// save the initial state first
-		GLMesh tModel = model;
-		tModel.mesh.garbage_collection();
-		tModel.LoadToShader();
-		models.push_back(tModel);
-
 		// MyTimer tTemp;
 		// for each rate we wish to decrease the original model
 		// tTemp.Start("Model Simplification Rate " + std::to_string(i) + "% Start");
@@ -370,13 +369,15 @@ void MeshObject::InitQEM() {
 		this->SimplifyMeshQEM(SimplificationMode::SmallestError, this->GetUndeletedFacesNumber() - (faceDiff / 100), i);
 		//tTemp.Flag("Model Simplification Rate " + std::to_string(i) + "% Done");
 		std::cout << "Model Simplification Rate " + std::to_string(i) + "% Done\n\n";
+
+		// save the final state
+		GLMesh tModel = model;
+		tModel.mesh.garbage_collection();
+		tModel.LoadToShader();
+		models.push_back(tModel);
 	}
 
-	// save the final state
-	GLMesh tModel = model;
-	tModel.mesh.garbage_collection();
-	tModel.LoadToShader();
-	models.push_back(tModel);
+	
 
 	tGlobal.Flag("Simplify all model finish!");
 }
@@ -798,9 +799,9 @@ void MeshObject::RearrangeHeap()
 #pragma endregion
 
 #pragma region Skeleton Extraction
-void MeshObject::InitSE() {
-	if (models.size() > 90) {
-		this->model = models[90];
+void MeshObject::InitSE(int id) {
+	if (models.size() > id) {
+		this->model = models[id];
 	}
 
 	Parameterization();
