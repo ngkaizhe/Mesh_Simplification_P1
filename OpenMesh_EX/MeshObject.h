@@ -94,6 +94,9 @@ public:
 	int GetFacesNumber();
 	void SetRate(int rate);
 
+	// the current model to be render
+	GLMesh* modelToRender;
+
 
 #pragma region Skeleton Extraction
 	/*  Skeleton Extraction*/
@@ -103,7 +106,7 @@ public:
 
 	double calcAreaOfThreePoints(MyMesh::Point& a, MyMesh::Point& b, MyMesh::Point& c);
 
-	double GetOneRingArea(MyMesh& mesh, MyMesh::VertexIter& v_it, OpenMesh::FPropHandleT<double>& areaArr, OpenMesh::FPropHandleT<int>& timeId, int it);
+	double GetOneRingArea(MyMesh& mesh, MyMesh::VertexIter& v_it);
 	// decrease the vertex number 
 #pragma endregion
 
@@ -122,8 +125,6 @@ private:
 	GLMesh model;
 	// the model to be save in all rate
 	std::vector<GLMesh> models;
-	// the current model to be render
-	GLMesh* modelToRender;
 	// mesh simplify rate(id)
 	int currentIDToRender;
 

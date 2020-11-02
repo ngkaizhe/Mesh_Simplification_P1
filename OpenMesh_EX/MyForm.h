@@ -600,10 +600,12 @@ private: System::Void saveModelDialog_FileOk(System::Object^  sender, System::Co
 {
 	std::string filename;
 	MarshalString(saveModelDialog->FileName, filename);
-
 	// do save file action
-	
-
+	if (!OpenMesh::IO::write_mesh(meshObjectPtr->modelToRender->mesh, filename))
+	{
+		std::cerr << "write error\n";
+		exit(1);
+	}
 }
 private: System::Void timer1_Tick(System::Object^ sender, System::EventArgs^ e) {
 	// update the opengl's render
