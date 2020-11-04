@@ -33,6 +33,12 @@
     <ClCompile Include="MyTimer.cpp">
       <Filter>原始程式檔</Filter>
     </ClCompile>
+    <ClCompile Include="SkeletonMesh.cpp">
+      <Filter>原始程式檔</Filter>
+    </ClCompile>
+    <ClCompile Include="GLMesh.cpp">
+      <Filter>原始程式檔</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="MyForm.h">
@@ -54,6 +60,12 @@
       <Filter>標頭檔</Filter>
     </ClInclude>
     <ClInclude Include="MyTimer.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
+    <ClInclude Include="SkeletonMesh.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
+    <ClInclude Include="GLMesh.h">
       <Filter>標頭檔</Filter>
     </ClInclude>
   </ItemGroup>

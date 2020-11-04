@@ -89,15 +89,18 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DotNetUitilities.cpp" />
+    <ClCompile Include="GLMesh.cpp" />
     <ClCompile Include="MeshObject.cpp" />
     <ClCompile Include="MyForm.cpp" />
     <ClCompile Include="Shader.cpp" />
     <ClCompile Include="MyTimer.cpp" />
+    <ClCompile Include="SkeletonMesh.cpp" />
     <ClCompile Include="ViewManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Common.h" />
     <ClInclude Include="DotNetUtilities.h" />
+    <ClInclude Include="GLMesh.h" />
     <ClInclude Include="MeshObject.h" />
     <ClInclude Include="MyForm.h">
       <FileType>CppForm</FileType>
@@ -106,6 +109,7 @@
     </ClInclude>
     <ClInclude Include="Shader.h" />
     <ClInclude Include="MyTimer.h" />
+    <ClInclude Include="SkeletonMesh.h" />
     <ClInclude Include="ViewManager.h" />
   </ItemGroup>
   <ItemGroup>
