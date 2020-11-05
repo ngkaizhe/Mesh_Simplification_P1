@@ -213,7 +213,7 @@ void MeshObject::InitQEM() {
 		// for each rate we wish to decrease the original model
 		// tTemp.Start("Model Simplification Rate " + std::to_string(i) + "% Start");
 		std::cout << "Model Simplification Rate " + std::to_string(i) + "% Start\n";
-		this->SimplifyMeshQEM(SimplificationMode::SmallestError, this->GetUndeletedFacesNumber() - (faceDiff / 100), i);
+		this->SimplifyMeshQEM(this->GetUndeletedFacesNumber() - (faceDiff / 100), i);
 		//tTemp.Flag("Model Simplification Rate " + std::to_string(i) + "% Done");
 		std::cout << "Model Simplification Rate " + std::to_string(i) + "% Done\n\n";
 
@@ -272,7 +272,7 @@ void MeshObject::InitVerticesQuadratic() {
 	}
 }
 
-void MeshObject::SimplifyMeshQEMOnce(SimplificationMode mode) {
+void MeshObject::SimplifyMeshQEMOnce() {
 	model.mesh.garbage_collection();
 	RearrangeHeap();
 	modelToRender = &model;
@@ -306,44 +306,26 @@ void MeshObject::SimplifyMeshQEMOnce(SimplificationMode mode) {
 		// the final vertex position to be
 		glm::vec4 newV;
 
-		// choose the different mode
-		if (mode == SimplificationMode::SmallestError) {
-			MyMesh::Point p1 = model.mesh.point(vh1);
-			MyMesh::Point p2 = model.mesh.point(vh2);
-			// set the differential matrix
-			glm::mat4 differentialMat = newQ;
-			// set the last row to (0, 0, 0, 1)
-			differentialMat = glm::row(differentialMat, 3, glm::vec4(0, 0, 0, 1));
+		// find the newV
+		MyMesh::Point p1 = model.mesh.point(vh1);
+		MyMesh::Point p2 = model.mesh.point(vh2);
+		// set the differential matrix
+		glm::mat4 differentialMat = newQ;
+		// set the last row to (0, 0, 0, 1)
+		differentialMat = glm::row(differentialMat, 3, glm::vec4(0, 0, 0, 1));
 
-			// if the differential matrix is invertible
-			if (glm::determinant(differentialMat) != 0) {
-				newV = glm::inverse(differentialMat) * glm::vec4(0, 0, 0, 1);
-			}
-			// else we just use the middle point
-			else {
-				MyMesh::Point p1 = model.mesh.point(vh1);
-				MyMesh::Point p2 = model.mesh.point(vh2);
-				MyMesh::Point newP = (p1 + p2) / 2.0f;
-				newV = glm::vec4(newP[0], newP[1], newP[2], 1);
-			}
+		// if the differential matrix is invertible
+		if (glm::determinant(differentialMat) != 0) {
+			newV = glm::inverse(differentialMat) * glm::vec4(0, 0, 0, 1);
 		}
-		// V = (V1 + V2) / 2
-		else if (mode == SimplificationMode::Middle) {
+		// else we just use the middle point
+		else {
 			MyMesh::Point p1 = model.mesh.point(vh1);
 			MyMesh::Point p2 = model.mesh.point(vh2);
 			MyMesh::Point newP = (p1 + p2) / 2.0f;
 			newV = glm::vec4(newP[0], newP[1], newP[2], 1);
 		}
-		// V = V1 
-		else if (mode == SimplificationMode::V1) {
-			MyMesh::Point p1 = model.mesh.point(vh1);
-			newV = glm::vec4(p1[0], p1[1], p1[2], 1);
-		}
-		// V = V2
-		else if (mode == SimplificationMode::V2) {
-			MyMesh::Point p1 = model.mesh.point(vh2);
-			newV = glm::vec4(p1[0], p1[1], p1[2], 1);
-		}
+
 
 		// save the edge id around vh1 and vh2
 		std::vector<EdgeInfo> edgesAroundVh1;
@@ -419,7 +401,7 @@ void MeshObject::SimplifyMeshQEMOnce(SimplificationMode mode) {
 
 }
 
-void MeshObject::SimplifyMeshQEM(SimplificationMode mode, int faceLeft, int simplifiedRate)
+void MeshObject::SimplifyMeshQEM(int faceLeft, int simplifiedRate)
 {
 	std::set<EdgeInfo>::iterator s_it;
 	// recheck whether the we reached the total edges number should be
@@ -448,44 +430,27 @@ void MeshObject::SimplifyMeshQEM(SimplificationMode mode, int faceLeft, int simp
 		// the final vertex position to be
 		glm::vec4 newV;
 
-		// choose the different mode
-		if (mode == SimplificationMode::SmallestError) {
-			MyMesh::Point p1 = model.mesh.point(vh1);
-			MyMesh::Point p2 = model.mesh.point(vh2);
-			// set the differential matrix
-			glm::mat4 differentialMat = newQ;
-			// set the last row to (0, 0, 0, 1)
-			differentialMat = glm::row(differentialMat, 3, glm::vec4(0, 0, 0, 1));
 
-			// if the differential matrix is invertible
-			if (glm::determinant(differentialMat) != 0) {
-				newV = glm::inverse(differentialMat) * glm::vec4(0, 0, 0, 1);
-			}
-			// else we just use the middle point
-			else {
-				MyMesh::Point p1 = model.mesh.point(vh1);
-				MyMesh::Point p2 = model.mesh.point(vh2);
-				MyMesh::Point newP = (p1 + p2) / 2.0f;
-				newV = glm::vec4(newP[0], newP[1], newP[2], 1);
-			}
+		// find the newV
+		MyMesh::Point p1 = model.mesh.point(vh1);
+		MyMesh::Point p2 = model.mesh.point(vh2);
+		// set the differential matrix
+		glm::mat4 differentialMat = newQ;
+		// set the last row to (0, 0, 0, 1)
+		differentialMat = glm::row(differentialMat, 3, glm::vec4(0, 0, 0, 1));
+
+		// if the differential matrix is invertible
+		if (glm::determinant(differentialMat) != 0) {
+			newV = glm::inverse(differentialMat) * glm::vec4(0, 0, 0, 1);
 		}
-		// V = (V1 + V2) / 2
-		else if (mode == SimplificationMode::Middle) {
+		// else we just use the middle point
+		else {
 			MyMesh::Point p1 = model.mesh.point(vh1);
 			MyMesh::Point p2 = model.mesh.point(vh2);
 			MyMesh::Point newP = (p1 + p2) / 2.0f;
 			newV = glm::vec4(newP[0], newP[1], newP[2], 1);
 		}
-		// V = V1 
-		else if (mode == SimplificationMode::V1) {
-			MyMesh::Point p1 = model.mesh.point(vh1);
-			newV = glm::vec4(p1[0], p1[1], p1[2], 1);
-		}
-		// V = V2
-		else if (mode == SimplificationMode::V2) {
-			MyMesh::Point p1 = model.mesh.point(vh2);
-			newV = glm::vec4(p1[0], p1[1], p1[2], 1);
-		}
+
 
 		// save the edge id around vh1 and vh2
 		std::vector<EdgeInfo> edgesAroundVh1;

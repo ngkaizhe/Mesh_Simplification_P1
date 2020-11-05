@@ -23,14 +23,6 @@ enum class Mode {
 	SSM,
 };
 
-// some extra enum and struct
-enum class SimplificationMode {
-	V1,
-	V2,
-	Middle,
-	SmallestError,
-};
-
 class MeshObject
 {
 public:
@@ -76,7 +68,7 @@ public:
 	GLMesh* modelToRender;
 	// decrease the vertex number
 	
-	void SimplifyMeshQEMOnce(SimplificationMode mode);
+	void SimplifyMeshQEMOnce();
 	void SimplifyMeshSSMOnce();
 
 #pragma region Get Mesh Info
@@ -127,7 +119,7 @@ private:
 	int GetUndeletedFacesNumber();
 	// helper function for init
 	// decrease the vertex number
-	void SimplifyMeshQEM(SimplificationMode mode, int vertices_left, int simplifyRate);
+	void SimplifyMeshQEM(int vertices_left, int simplifyRate);
 	// init vertices quadratic property
 	void InitVerticesQuadratic();
 	// check whether the edge is an concave edge
