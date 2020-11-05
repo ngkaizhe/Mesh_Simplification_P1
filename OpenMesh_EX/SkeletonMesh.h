@@ -86,7 +86,7 @@ private:
 	std::vector<Edge> edges;
 
 	// the edge id to get collapse next
-	int edgeIDToBeCollapsed;
+	int edgeIDToBeCollapsed = -1;
 
 	// helper function for finding the lowest cost to collapse
 	void CalculateEdgeIDToBeCollapsed();

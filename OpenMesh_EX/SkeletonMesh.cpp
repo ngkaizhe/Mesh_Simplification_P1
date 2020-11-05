@@ -14,7 +14,9 @@ SkeletonMesh::SkeletonMesh(GLMesh model) {
 	this->InitSSM(model);
 	isSamplingCostInit = false;
 
-	// reload our shader
+	// reupdate the lowest edge to collapse
+	this->CalculateEdgeIDToBeCollapsed();
+	// reload the shader
 	this->LoadToShader();
 }
 
@@ -44,11 +46,34 @@ void SkeletonMesh::LoadToShader() {
 
 // render the line (currently)
 void SkeletonMesh::Render(Shader shader) {
+	// line render
 	shader.use();
 
 	glBindVertexArray(lineVAO);
 	glDrawArrays(GL_LINES, 0, this->edges.size() * 2);
 	glBindVertexArray(0);
+
+	// debug point render
+	shader.setUniform3fv("color", glm::vec3(0.0f, 0.0f, 1.0f));
+
+	if (this->edgeIDToBeCollapsed != -1) {
+		std::vector<glm::vec3> verticesToRender;
+		verticesToRender.reserve(2);
+		verticesToRender.push_back(this->edges[this->edgeIDToBeCollapsed]._i->_point);
+		verticesToRender.push_back(this->edges[this->edgeIDToBeCollapsed]._j->_point);
+
+		if (verticesToRender.size() != 0) {
+			GLuint tempVbo;
+			glGenBuffers(1, &tempVbo);
+			glBindBuffer(GL_ARRAY_BUFFER, tempVbo);
+			glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * verticesToRender.size(), &verticesToRender[0], GL_STATIC_DRAW);
+			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+			glEnableVertexAttribArray(0);
+
+			glDrawArrays(GL_POINTS, 0, verticesToRender.size());
+			glBindBuffer(GL_ARRAY_BUFFER, 0);
+		}
+	}
 }
 
 // init the SSM methd
@@ -138,7 +163,36 @@ void SkeletonMesh::InitSSM(GLMesh model) {
 
 // simplify our mesh with ssm algorithm
 void SkeletonMesh::SimplifyMeshSSMOnce() {
+	Edge* edgeToCollapse = &this->edges[this->edgeIDToBeCollapsed];
+	Vertex* i;
+	Vertex* j;
 
+	// determine either collapse i->j
+	// or j->i
+	if(edgeToCollapse->costIToJ < edgeToCollapse->costJToI){
+		i = edgeToCollapse->_i;
+		j = edgeToCollapse->_j;
+	}
+	else {
+		i = edgeToCollapse->_j;
+		j = edgeToCollapse->_i;
+	}
+
+	// update the quadratic matrix
+	j->quadraticMat += i->quadraticMat;
+	// collapse edge
+	this->CollapseEdge(edgeToCollapse, i, j);
+
+	// reupdate all cost of the halfedge around the collapsed vertex
+	for (int k = 0; k < j->oneRingEdges.size(); k++) {
+		j->oneRingEdges[k]->costIToJ = this->F(j->oneRingEdges[k]->_i, j->oneRingEdges[k]->_j);
+		j->oneRingEdges[k]->costJToI = this->F(j->oneRingEdges[k]->_j, j->oneRingEdges[k]->_i);
+	}
+	
+	// reupdate the lowest edge to collapse
+	this->CalculateEdgeIDToBeCollapsed();
+	// reload the shader
+	this->LoadToShader();
 }
 
 // helper function for finding the lowest cost to collapse
