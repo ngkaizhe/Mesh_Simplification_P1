@@ -17,6 +17,8 @@ Shader shader;
 
 bool meshInited = false;
 
+Mode currentMode = Mode::QEM;
+
 namespace OpenMesh_EX {
 
 	using namespace System;
@@ -603,16 +605,8 @@ private: System::Void hkoglPanelControl1_Paint(System::Object^  sender, System::
 
 	// render twice
 	if (meshInited) {
-		// fill
-		shader.setUniform3fv("color", glm::vec3(1.0f, 1.0f, 0.0f));
-		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-		meshObjectPtr->Render(shader);
-		// render line / wireframe
-		shader.setUniform3fv("color", glm::vec3(0.0f, 0.0f, 0.0f));
-		meshObjectPtr->RenderLine(shader);
-		// point
-		shader.setUniform3fv("color", glm::vec3(0.0f, 0.0f, 1.0f));
-		// meshObjectPtr->DebugRender(shader);
+		currentMode = Mode::SSM;
+		meshObjectPtr->Render(shader, currentMode);
 	}
 }
 
@@ -625,6 +619,18 @@ private: System::Void hkoglPanelControl1_Resize(System::Object^ sender, System::
 private: System::Void hkoglPanelControl1_KeyPress(System::Object^ sender, System::Windows::Forms::KeyPressEventArgs^ e) {
 	m_camera.keyEvents((unsigned char)e->KeyChar);
 	std::cout << "Key " << e->KeyChar << " is pressed\n";
+
+	if (e->KeyChar == 'o') {
+		if (meshInited) {
+			meshObjectPtr->PrintSkeletonMeshInfo();
+		}
+	}
+
+	else if (e->KeyChar == ' ') {
+		if (meshInited) {
+			meshObjectPtr->SimplifyMeshSSMOnce();
+		}
+	}
 }
 private: System::Void hkoglPanelControl1_MouseDown(System::Object^  sender, System::Windows::Forms::MouseEventArgs^  e)
 {

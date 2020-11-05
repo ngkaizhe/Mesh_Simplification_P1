@@ -13,6 +13,16 @@
 #include <fstream>
 #include <math.h>
 
+// current mode in
+enum class Mode {
+	// quadratic error metric
+	QEM,
+	// skeleton extraction
+	SE,
+	// shape, sampling cost mesh simplification
+	SSM,
+};
+
 // some extra enum and struct
 enum class SimplificationMode {
 	V1,
@@ -54,12 +64,11 @@ public:
 	~MeshObject();
 
 	bool Init(std::string fileName);
-	void Render(Shader shader);
-	void RenderPoint(Shader shader);
-	void RenderLine(Shader shader);
+	void Render(Shader shader, Mode mode);
 
 	// debug
 	void DebugRender(Shader shader);
+	void PrintSkeletonMeshInfo();
 
 	void SetRate(int rate);
 
@@ -68,7 +77,7 @@ public:
 	// decrease the vertex number
 	
 	void SimplifyMeshQEMOnce(SimplificationMode mode);
-	void SimplifyMeshMMSOnce();
+	void SimplifyMeshSSMOnce();
 
 #pragma region Get Mesh Info
 	int GetVerticesNumber();
@@ -141,6 +150,9 @@ private:
 
 	void InitSSM();
 	float F(MyMesh::HalfedgeHandle heh, bool isInit);
+
+	// the ssm part of skeleton mesh
+	SkeletonMesh skeletonMesh;
 #pragma endregion
 
 	// debug purpose
