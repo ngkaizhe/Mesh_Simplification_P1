@@ -11,8 +11,6 @@ MeshObject::MeshObject()
 	// add properties
 	model.mesh.add_property(this->quadricMat);
 	model.mesh.add_property(this->cost);
-	model.mesh.add_property(this->heCost);
-	model.mesh.add_property(this->totalDistance);
 }
 
 MeshObject::~MeshObject()
@@ -20,8 +18,6 @@ MeshObject::~MeshObject()
 	// remove properties
 	model.mesh.remove_property(this->quadricMat);
 	model.mesh.remove_property(this->cost);
-	model.mesh.remove_property(this->heCost);
-	model.mesh.remove_property(this->totalDistance);
 }
 
 bool MeshObject::Init(std::string fileName)
@@ -44,10 +40,6 @@ bool MeshObject::Init(std::string fileName)
 	this->InitSSM();
 
 	CollapseRecalculated = false;
-
-	/*this->currentIDToRender = -1;
-	this->SetRate(0);
-	model.mesh.garbage_collection();*/
 
 	return retV;
 }
@@ -76,7 +68,7 @@ void MeshObject::Render(Shader shader, Mode mode)
 	else if (mode == Mode::SSM) {
 		// render line but with our skeleton mesh
 		shader.setUniform3fv("color", glm::vec3(0.0f, 0.0f, 0.0f));
-		skeletonMesh.Render(shader);
+		skeletonMeshToRender->Render(shader);
 	}
 }
 
@@ -106,7 +98,7 @@ void MeshObject::DebugRender(Shader shader) {
 }
 
 void MeshObject::PrintSkeletonMeshInfo() {
-	this->skeletonMesh.PrintSkeletonMeshInfo();
+	this->skeletonMeshToRender->PrintSkeletonMeshInfo();
 }
 
 // debug used
@@ -137,20 +129,23 @@ void MeshObject::QEMRecalculateCollapseVerticesToRender() {
 }
 
 void MeshObject::SSMRecalculateCollapseVerticesToRender() {
-	CollapseVerticesToRender.clear();
-
-	MyMesh::HalfedgeHandle heh = model.mesh.halfedge_handle(this->lowestCostHalfEdgeID);
-	CollapseVerticesToRender.push_back(model.mesh.from_vertex_handle(heh));
-	CollapseVerticesToRender.push_back(model.mesh.to_vertex_handle(heh));
-
-	CollapseRecalculated = true;
+	// do nothing as we have skelenton for ssm
 }
 
-void MeshObject::SetRate(int rate) {
+// for ui to used to render
+void MeshObject::SetQEMRate(int rate) {
 	// if the rate is different to our current rate change the pointer then
-	if (rate != this->currentIDToRender) {
-		this->currentIDToRender = rate;
-		this->modelToRender = &models[this->currentIDToRender];
+	if (rate != this->currentQEMIDToRender) {
+		this->currentQEMIDToRender = rate;
+		this->modelToRender = &models[this->currentQEMIDToRender];
+	}
+}
+
+void MeshObject::SetSSMRate(int rate) {
+	// if the rate is different to our current rate change the pointer then
+	if (rate != this->currentSSMIDToRender) {
+		this->currentSSMIDToRender = rate;
+		this->skeletonMeshToRender = &skeletonMeshs[this->currentSSMIDToRender];
 	}
 }
 
@@ -169,6 +164,10 @@ int MeshObject::GetFacesNumber() {
 
 int MeshObject::GetModelsSize() {
 	return this->models.size();
+}
+
+int MeshObject::GetSkeletonMeshsSize() {
+	return this->skeletonMeshs.size();
 }
 
 #pragma endregion
@@ -212,10 +211,10 @@ void MeshObject::InitQEM() {
 		// MyTimer tTemp;
 		// for each rate we wish to decrease the original model
 		// tTemp.Start("Model Simplification Rate " + std::to_string(i) + "% Start");
-		std::cout << "Model Simplification Rate " + std::to_string(i) + "% Start\n";
+		std::cout << "Model Simplification QEM Rate " + std::to_string(i) + "% Start\n";
 		this->SimplifyMeshQEM(this->GetUndeletedFacesNumber() - (faceDiff / 100), i);
 		//tTemp.Flag("Model Simplification Rate " + std::to_string(i) + "% Done");
-		std::cout << "Model Simplification Rate " + std::to_string(i) + "% Done\n\n";
+		std::cout << "Model Simplification QEM Rate " + std::to_string(i) + "% Done\n\n";
 
 		// save the final state
 		GLMesh tModel = model;
@@ -224,9 +223,11 @@ void MeshObject::InitQEM() {
 		models.push_back(tModel);
 	}
 
-	
-
 	tGlobal.Flag("Simplify all model finish!");
+
+	this->currentQEMIDToRender = -1;
+	this->SetQEMRate(0);
+	model.mesh.garbage_collection();
 }
 
 void MeshObject::InitVerticesQuadratic() {
@@ -927,173 +928,39 @@ void MeshObject::InitSSM() {
 	model.mesh.garbage_collection();
 	skeletonMesh = SkeletonMesh(model);
 
-	if(false){
-		// initialize the Q(SSM) for all vertices
-	// reclear all quadratic mat in the vertices handle
-	// reclear the total distance of vertices too
-		for (MyMesh::VertexIter v_it = model.mesh.vertices_sbegin(); v_it != model.mesh.vertices_end(); v_it++) {
-			model.mesh.property(this->quadricMat, *v_it) = glm::mat4(0.0f);
-			model.mesh.property(this->totalDistance, *v_it) = 0.0f;
-		}
+	skeletonMeshs.clear();
+	skeletonMeshs.reserve(101);
 
-		// loop through all edge to init vertices' quadratic matrix
-		for (MyMesh::EdgeIter e_it = model.mesh.edges_sbegin(); e_it != model.mesh.edges_end(); e_it++) {
-			MyMesh::HalfedgeHandle heh = model.mesh.halfedge_handle(*e_it, 0);
-			MyMesh::VertexHandle vh1 = model.mesh.from_vertex_handle(heh);
-			MyMesh::VertexHandle vh2 = model.mesh.to_vertex_handle(heh);
+	SkeletonMesh tempSkeletonMesh = skeletonMesh;
+	tempSkeletonMesh.LoadToShader();
+	skeletonMeshs.push_back(tempSkeletonMesh);
 
-			// i->j as halfedge presentation
-			MyMesh::Point iTemp = model.mesh.point(vh1);
-			glm::vec3 i = glm::vec3(iTemp[0], iTemp[1], iTemp[2]);
-			MyMesh::Point jTemp = model.mesh.point(vh2);
-			glm::vec3 j = glm::vec3(jTemp[0], jTemp[1], jTemp[2]);
+	// the lowest total edge numbers our aim to be
+	int lowestTotalEdgeNumber = 10;
+	int currentTotalEdgeNumber = skeletonMesh.GetUndeletedEdgesNumber();
+	int edgeToDecreaseForEachLoop = (currentTotalEdgeNumber - lowestTotalEdgeNumber) / 100;
 
-			// a is the normalized edge vector of edge(i, j)
-			glm::vec3 a = glm::normalize(j - i);
-			glm::vec3 b = glm::cross(a, i);
+	for (int i = 0; i < 100; i++) {
+		// MyTimer tTemp;
+		// tTemp.Start("Model Simplification Rate " + std::to_string(i) + "% Start");
+		std::cout << "Skeleton Mesh Simplification SSM Rate " + std::to_string(i) + "% Start\n";
+		this->skeletonMesh.SimplifyMeshSSM(this->skeletonMesh.GetUndeletedEdgesNumber() - edgeToDecreaseForEachLoop);
+		//tTemp.Flag("Model Simplification Rate " + std::to_string(i) + "% Done");
+		std::cout << "Skeleton Mesh Simplification SSM Rate " + std::to_string(i) + "% Done\n\n";
 
-			// glm is column major
-			glm::mat4x3 K = glm::mat4x3(0.0f);
-			K[0] = glm::vec3(0, a.z, -a.y);
-			K[1] = glm::vec3(-a.z, 0, a.x);
-			K[2] = glm::vec3(a.y, -a.x, 0);
-			K[3] = glm::vec3(-b.x, -b.y, -b.z);
-
-			glm::mat4 Q = glm::transpose(K) * K;
-
-			model.mesh.property(this->quadricMat, vh1) += Q;
-			model.mesh.property(this->quadricMat, vh2) += Q;
-
-			// optimization purpose, we add the total distance of the vertex
-			model.mesh.property(this->totalDistance, vh1) += glm::distance(i, j);
-			model.mesh.property(this->totalDistance, vh2) += glm::distance(i, j);
-		}
-
-		bool isFirst = true;
-		double lowestHeCost;
-		this->lowestCostHalfEdgeID = -1;
-		// init the cost to the halfedge of mesh
-		// save the lowest cost id from the mesh
-		for (MyMesh::HalfedgeIter he_it = model.mesh.halfedges_begin(); he_it != model.mesh.halfedges_end(); he_it++) {
-			model.mesh.property(this->heCost, *he_it) = this->F(*he_it, true);
-
-			// determine the lowestCostHalfEdgeID
-			if (model.mesh.is_collapse_ok(*he_it)) {
-				if (isFirst) {
-					this->lowestCostHalfEdgeID = he_it->idx();
-					isFirst = false;
-					lowestHeCost = model.mesh.property(this->heCost, *he_it);
-				}
-				else if ((model.mesh.property(this->heCost, *he_it) < lowestHeCost)) {
-					this->lowestCostHalfEdgeID = he_it->idx();
-					lowestHeCost = model.mesh.property(this->heCost, *he_it);
-				}
-			}
-
-		}
-
-		// init different rate of simplification models from the SSM algorithm
-
+		// save the final state
+		SkeletonMesh tempSkeletonMesh = skeletonMesh;
+		tempSkeletonMesh.LoadToShader();
+		skeletonMeshs.push_back(tempSkeletonMesh);
 	}
-}
-
-// total cost on halfedge
-float MeshObject::F(MyMesh::HalfedgeHandle heh, bool isInit) {
-	// i->j
-	MyMesh::VertexHandle vhi = model.mesh.from_vertex_handle(heh);
-	MyMesh::VertexHandle vhj = model.mesh.to_vertex_handle(heh);
-
-	// init shape cost
-	// shapeCost = Fi(vj) + Fj(vj)
-	MyMesh::Point pi = model.mesh.point(vhi);
-	glm::vec4 vi = glm::vec4(pi[0], pi[1], pi[2], 1);
-	glm::mat4 Qi = model.mesh.property(this->quadricMat, vhi);
-
-	MyMesh::Point pj = model.mesh.point(vhj);
-	glm::vec4 vj = glm::vec4(pj[0], pj[1], pj[2], 1);
-	glm::mat4 Qj = model.mesh.property(this->quadricMat, vhj);
-
-	// Fivj = (vj(T) * Qi * vj)
-	// as glm doesn't provide vector * matrix from the left
-	// so v(T) * Qi = (Qi * vj(T))(T) --> 1X4 vector
-	// 1X4 vector * 4X1 vector = dot product
-	float Fivj = glm::dot(glm::transpose(Qi) * vj, vj);
-	float Fjvj = glm::dot(glm::transpose(Qj) * vj, vj);
-	float shapeCost = Fivj + Fjvj;
-
-	// init sampling cost
-	float samplingCost = 0;
-	if (isInit) {
-		samplingCost = glm::distance(vi, vj) * model.mesh.property(this->totalDistance, vhi);
-	}
-	else {
-		// we recalculate the sampling cost
-		for (MyMesh::VertexVertexCWIter vv_it = model.mesh.vv_cwbegin(vhi); vv_it != model.mesh.vv_cwend(vhi); vv_it++) {
-			MyMesh::VertexHandle vhTemp = *vv_it;
-			MyMesh::Point pTemp = model.mesh.point(vhTemp);
-			glm::vec4 vTemp = glm::vec4(pTemp[0], pTemp[1], pTemp[2], 1);
-			samplingCost += glm::distance(vi, vTemp);
-		}
-		samplingCost *= glm::distance(vi, vj);
-	}
-		
-	// return the reuslt
-	return shapeCost + 0.1 * samplingCost;
+	
+	// Set the current id for skeleton mesh to rendered
+	this->currentSSMIDToRender = -1;
+	this->SetSSMRate(0);
 }
 
 // simplify the mesh with SSM algorithm
 void MeshObject::SimplifyMeshSSMOnce() {
 	skeletonMesh.SimplifyMeshSSMOnce();
-
-	if (false) {
-		// collapse the halfedge
-		MyMesh::HalfedgeHandle hehToCollapse = model.mesh.halfedge_handle(this->lowestCostHalfEdgeID);
-		MyMesh::VertexHandle vhj = model.mesh.to_vertex_handle(hehToCollapse);
-		MyMesh::VertexHandle vhi = model.mesh.from_vertex_handle(hehToCollapse);
-		// update the quadratic matrix
-		model.mesh.property(this->quadricMat, vhj) += model.mesh.property(this->quadricMat, vhi);
-		model.mesh.collapse(hehToCollapse);
-
-		// reupdate all cost of the halfedge around the collapsed vertex
-		// record which halfedge to collapsed next
-		bool isFirst = true;
-		double lowestHeCost;
-		this->lowestCostHalfEdgeID = -1;
-		// update the cost to the halfedge of adjadent outgoing halfedges
-		// save the lowest cost id from the adjadent outgoing halfedges
-		for (MyMesh::VertexOHalfedgeCWIter ohe_it = model.mesh.voh_cwbegin(vhj); ohe_it != model.mesh.voh_cwend(vhj); ohe_it++) {
-			model.mesh.property(this->heCost, *ohe_it) = this->F(*ohe_it, false);
-
-			// determine the lowestCostHalfEdgeID
-			if (model.mesh.is_collapse_ok(*ohe_it)) {
-				if (isFirst) {
-					this->lowestCostHalfEdgeID = ohe_it->idx();
-					isFirst = false;
-					lowestHeCost = model.mesh.property(this->heCost, *ohe_it);
-				}
-				else if ((model.mesh.property(this->heCost, *ohe_it) < lowestHeCost)) {
-					this->lowestCostHalfEdgeID = ohe_it->idx();
-					lowestHeCost = model.mesh.property(this->heCost, *ohe_it);
-				}
-			}
-		}
-
-		// update the cost to the halfedge of adjadent ingoing halfedges
-		// save the lowest cost id from the adjadent ingoing halfedges
-		for (MyMesh::VertexIHalfedgeCWIter ihe_it = model.mesh.vih_cwbegin(vhj); ihe_it != model.mesh.vih_cwend(vhj); ihe_it++) {
-			model.mesh.property(this->heCost, *ihe_it) = this->F(*ihe_it, false);
-
-			// determine the lowestCostHalfEdgeID
-			if (model.mesh.is_collapse_ok(*ihe_it) && (model.mesh.property(this->heCost, *ihe_it) < lowestHeCost)) {
-				this->lowestCostHalfEdgeID = ihe_it->idx();
-				lowestHeCost = model.mesh.property(this->heCost, *ihe_it);
-			}
-		}
-
-
-		CollapseRecalculated = false;
-		model.mesh.garbage_collection();
-		model.LoadToShader();
-	}
 }
 #pragma endregion

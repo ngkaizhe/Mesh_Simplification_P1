@@ -23,11 +23,13 @@ SkeletonMesh::SkeletonMesh(GLMesh model) {
 // helper function to reload the shader
 void SkeletonMesh::LoadToShader() {
 	std::vector<glm::vec3> verticesToRender;
-	verticesToRender.reserve(this->edges.size() * 2);
+	verticesToRender.reserve(this->GetUndeletedEdgesNumber() * 2);
 
 	for (int k = 0; k < this->edges.size(); k++) {
-		verticesToRender.push_back(this->edges[k]._i->_point);
-		verticesToRender.push_back(this->edges[k]._j->_point);
+		if (!this->edges[k]._isDeleted) {
+			verticesToRender.push_back(this->edges[k]._i->_point);
+			verticesToRender.push_back(this->edges[k]._j->_point);
+		}
 	}
 
 	glGenVertexArrays(1, &lineVAO);
@@ -53,25 +55,29 @@ void SkeletonMesh::Render(Shader shader) {
 	glDrawArrays(GL_LINES, 0, this->edges.size() * 2);
 	glBindVertexArray(0);
 
-	// debug point render
-	shader.setUniform3fv("color", glm::vec3(0.0f, 0.0f, 1.0f));
+	bool debugPointRendered = false;
 
-	if (this->edgeIDToBeCollapsed != -1) {
-		std::vector<glm::vec3> verticesToRender;
-		verticesToRender.reserve(2);
-		verticesToRender.push_back(this->edges[this->edgeIDToBeCollapsed]._i->_point);
-		verticesToRender.push_back(this->edges[this->edgeIDToBeCollapsed]._j->_point);
+	if (debugPointRendered) {
+		// debug point render
+		shader.setUniform3fv("color", glm::vec3(0.0f, 0.0f, 1.0f));
 
-		if (verticesToRender.size() != 0) {
-			GLuint tempVbo;
-			glGenBuffers(1, &tempVbo);
-			glBindBuffer(GL_ARRAY_BUFFER, tempVbo);
-			glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * verticesToRender.size(), &verticesToRender[0], GL_STATIC_DRAW);
-			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-			glEnableVertexAttribArray(0);
+		if (this->edgeIDToBeCollapsed != -1) {
+			std::vector<glm::vec3> verticesToRender;
+			verticesToRender.reserve(2);
+			verticesToRender.push_back(this->edges[this->edgeIDToBeCollapsed]._i->_point);
+			verticesToRender.push_back(this->edges[this->edgeIDToBeCollapsed]._j->_point);
 
-			glDrawArrays(GL_POINTS, 0, verticesToRender.size());
-			glBindBuffer(GL_ARRAY_BUFFER, 0);
+			if (verticesToRender.size() != 0) {
+				GLuint tempVbo;
+				glGenBuffers(1, &tempVbo);
+				glBindBuffer(GL_ARRAY_BUFFER, tempVbo);
+				glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * verticesToRender.size(), &verticesToRender[0], GL_STATIC_DRAW);
+				glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+				glEnableVertexAttribArray(0);
+
+				glDrawArrays(GL_POINTS, 0, verticesToRender.size());
+				glBindBuffer(GL_ARRAY_BUFFER, 0);
+			}
 		}
 	}
 }
@@ -195,6 +201,39 @@ void SkeletonMesh::SimplifyMeshSSMOnce() {
 	this->LoadToShader();
 }
 
+void SkeletonMesh::SimplifyMeshSSM(int edgesToLeft) {
+	while (this->GetUndeletedEdgesNumber() > edgesToLeft) {
+		Edge* edgeToCollapse = &this->edges[this->edgeIDToBeCollapsed];
+		Vertex* i;
+		Vertex* j;
+
+		// determine either collapse i->j
+		// or j->i
+		if (edgeToCollapse->costIToJ < edgeToCollapse->costJToI) {
+			i = edgeToCollapse->_i;
+			j = edgeToCollapse->_j;
+		}
+		else {
+			i = edgeToCollapse->_j;
+			j = edgeToCollapse->_i;
+		}
+
+		// update the quadratic matrix
+		j->quadraticMat += i->quadraticMat;
+		// collapse edge
+		this->CollapseEdge(edgeToCollapse, i, j);
+
+		// reupdate all cost of the halfedge around the collapsed vertex
+		for (int k = 0; k < j->oneRingEdges.size(); k++) {
+			j->oneRingEdges[k]->costIToJ = this->F(j->oneRingEdges[k]->_i, j->oneRingEdges[k]->_j);
+			j->oneRingEdges[k]->costJToI = this->F(j->oneRingEdges[k]->_j, j->oneRingEdges[k]->_i);
+		}
+
+		// reupdate the lowest edge to collapse
+		this->CalculateEdgeIDToBeCollapsed();
+	}
+}
+
 // helper function for finding the lowest cost to collapse
 void SkeletonMesh::CalculateEdgeIDToBeCollapsed() {
 	double currentLowestCost;
@@ -266,9 +305,9 @@ Edge* SkeletonMesh::GetEdge(Vertex* i, Vertex* j) {
 	for (int i = 0; i < iOneRingEdges.size(); i++) {
 		for (int j = 0; j < jOneRingEdges.size(); j++) {
 			// exception consideration
-			if (iOneRingEdges[i]->_isDeleted || jOneRingEdges[j]->_isDeleted) throw "Edge that was already deleted shouldn't be found!\n";
+			if (iOneRingEdges[i]->_isDeleted || jOneRingEdges[j]->_isDeleted) throw "In void SkeletonMesh::GetEdge()\nEdge that was already deleted shouldn't be found!\n";
 
-			if (jOneRingEdges[j]->_idx == iOneRingEdges[i]->_idx) {
+			if (*jOneRingEdges[j] == *iOneRingEdges[i]) {
 				return jOneRingEdges[j];
 			}
 		}
@@ -285,23 +324,200 @@ void SkeletonMesh::CollapseEdgeJToI(Edge* edge) {
 }
 
 void SkeletonMesh::CollapseEdge(Edge* edge, Vertex* i, Vertex* j) {
+	// find the common adjadent vertices ij
+	// we will save the common adjadent vertices idxs
+	std::vector<int> commonAdjadentVerticesIJ_Idxs;
+	for (int k = 0; k < i->oneRingVertices.size(); k++) {
+		Vertex* v1 = i->oneRingVertices[k];
+		for (int l = 0; l < j->oneRingVertices.size(); l++) {
+			Vertex* v2 = j->oneRingVertices[l];
+			
+			// exception consideration
+			// this shouldn't get ran
+			if (v1->_isDeleted || v2->_isDeleted) {
+				throw "In void SkeletonMesh::CollapseEdge()\nVertex that was already deleted shouldn't be found!\n";
+			}
 
+			// common adjadent vertices found
+			if (*v1 == *v2) {
+				commonAdjadentVerticesIJ_Idxs.push_back(v1->_idx);
+			}
+		}
+	}
+
+	// as we are collapsing the halfedge of i->j
+	// update the information between j and the i's one ring edges
+
+	// i's one ring edges should be update
+	// so the edge informations are all from i(that should be updated)
+	for (int k = 0; k < i->oneRingEdges.size(); k++) {
+		Edge* edge = i->oneRingEdges[k];
+		// edge exception consideration
+		if (edge->_isDeleted) throw "In void SkeletonMesh::CollapseEdge()\nEdge that was already deleted shouldn't be found!\n";
+
+		// we first defined the from_vertex and to_vertex
+		// the from_vertex should be i
+		Vertex* from_vertex;
+		Vertex* to_vertex;
+		if (*(edge->_i) == *i) {
+			from_vertex = edge->_i;
+			to_vertex = edge->_j;
+		}
+		else {
+			from_vertex = edge->_j;
+			to_vertex = edge->_i;
+		}
+
+
+		// there are 2 type of edges 
+		// case 1: edge of (i, j) // this should only be 1
+		// case 2: edges of (common adjadent vertices ij, i) // this should only be 2
+		if (*to_vertex == *j || std::find(commonAdjadentVerticesIJ_Idxs.begin(), commonAdjadentVerticesIJ_Idxs.end(), to_vertex->_idx) != commonAdjadentVerticesIJ_Idxs.end()) {
+			// delete the edge
+			edge->_isDeleted = true;
+		}
+
+		// case 3: other edges to be update
+		else {
+			// update the edge side that is i
+			if (*(edge->_i) == *i) {
+				edge->_i = j;
+			}
+			else {
+				edge->_j = j;
+			}
+
+			// update the edge to j's one ring edges
+			j->oneRingEdges.push_back(edge);
+		}
+	}
+
+	// j's one ring edges should be update
+	// the case 1 from the previous loop
+	// there should have 1 edge from j's one ring edges that have been deleted
+	for (int k = 0; k < j->oneRingEdges.size(); ) {
+		if (j->oneRingEdges[k]->_isDeleted) {
+			j->oneRingEdges.erase(j->oneRingEdges.begin() + k);
+			break;
+		} 
+		else k++;
+	}
+
+	// i's one ring vertices should be update
+	for (int k = 0; k < i->oneRingVertices.size(); k++) {
+		Vertex* v = i->oneRingVertices[k];
+
+		// find whether the v is the adjadent of j
+		// if it is save the index
+		bool isJAdjadent = false;
+		int adjIndex = -1;
+		for (int l = 0; l < j->oneRingVertices.size(); l++) {
+			if (*(j->oneRingVertices[l]) == *v) {
+				isJAdjadent = true;
+				adjIndex = l;
+				break;
+			}
+		}
+
+
+		// there are also 3 types of vertices
+		// j
+		if (*v == *j) {
+			// do nothing
+		}
+
+		// common adjadent vertices of i and j
+		else if (isJAdjadent) {
+			// delete i from the v's one ring vertices
+			for (int l = 0; l < v->oneRingVertices.size(); l++) {
+				if (*v->oneRingVertices[l] == *i) {
+					v->oneRingVertices.erase(v->oneRingVertices.begin() + l);
+					break;
+				}
+			}
+			// delete the edge(i, v) from the v's one ring edges
+			for (int l = 0; l < v->oneRingEdges.size(); l++) {
+				Edge* e = v->oneRingEdges[l];
+				if ((*e->_i == *i) && (*e->_j == *v) ||
+					(*e->_j == *i) && (*e->_i == *v)) {
+					v->oneRingEdges.erase(v->oneRingEdges.begin() + l);
+					break;
+				}
+			}
+		}
+
+		// the other vertices
+		// update the vertices one ring info
+		else {
+			// update the v to have j as one ring (i becomes j)
+			for (int l = 0; l < v->oneRingVertices.size(); l++) {
+				if (*v->oneRingVertices[l] == *i) {
+					v->oneRingVertices[l] = j;
+					break;
+				}
+			}
+
+			// update the j's one ring vertices to have v
+			j->oneRingVertices.push_back(v);
+		}
+	}
+
+	// delete i from the j's one ring vertices
+	for (int l = 0; l < j->oneRingVertices.size(); l++) {
+		if (*(j->oneRingVertices[l]) == *i) {
+			j->oneRingVertices.erase(j->oneRingVertices.begin() + l);
+		}
+	}
+	
+	// set delete for the i vertex
+	i->_isDeleted = true;
+
+	// check for whether there have unconsidered conditions
+	for (int k = 0; k < i->oneRingVertices.size(); k++) {
+		Vertex* v = i->oneRingVertices[k];
+
+		// the one ring of v shouldn't have i inside
+		for (int l = 0; l < v->oneRingVertices.size(); l++) {
+			if (*(v->oneRingVertices[l]) == *i) {
+				throw "V shouldn't have i inside!\n";
+			}
+		}
+	}
+
+	for (int k = 0; k < i->oneRingEdges.size(); k++) {
+		Edge* e = i->oneRingEdges[k];
+
+		// the undeleted edge shouldn't have i as its vertices
+		// the e shouldn't have i as its vertices
+		if (!e->_isDeleted) {
+			if (*(e->_i) == *i || *(e->_j) == *i) {
+				throw "E shouldn't have i as its vertices!\n";
+			}
+		}
+	}
 }
 
 void SkeletonMesh::PrintSkeletonMeshInfo() {
-	int totalVerticesNumber = 0;
-	int totalEdgesNumber = 0;
+	std::cout << "\n";
+	std::cout << "Total Vertices => " << GetUndeletedVerticesNumber() << '\n';
+	std::cout << "Total Edges => " << GetUndeletedEdgesNumber() << '\n';
+	std::cout << "\n";
+}
 
+int SkeletonMesh::GetUndeletedVerticesNumber() {
+	int totalVerticesNumber = 0;
 	for (int k = 0; k < this->vertices.size(); k++) {
 		if (!this->vertices[k]._isDeleted) totalVerticesNumber++;
 	}
 
+	return totalVerticesNumber;
+}
+
+int SkeletonMesh::GetUndeletedEdgesNumber() {
+	int totalEdgesNumber = 0;
 	for (int k = 0; k < this->edges.size(); k++) {
 		if (!this->edges[k]._isDeleted) totalEdgesNumber++;
 	}
-	
-	std::cout << "\n";
-	std::cout << "Total Vertices => " << totalVerticesNumber << '\n';
-	std::cout << "Total Edges => " << totalEdgesNumber << '\n';
-	std::cout << "\n";
+
+	return totalEdgesNumber;
 }

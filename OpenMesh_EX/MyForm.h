@@ -19,6 +19,8 @@ bool meshInited = false;
 
 Mode currentMode = Mode::QEM;
 
+int currentSSMRate = 0;
+
 namespace OpenMesh_EX {
 
 	using namespace System;
@@ -623,12 +625,22 @@ private: System::Void hkoglPanelControl1_KeyPress(System::Object^ sender, System
 	if (e->KeyChar == 'o') {
 		if (meshInited) {
 			meshObjectPtr->PrintSkeletonMeshInfo();
+			
+			std::cout << "The Current SSM Rate is " << currentSSMRate << '\n';
 		}
 	}
 
-	else if (e->KeyChar == ' ') {
+	else if (e->KeyChar == '1') {
 		if (meshInited) {
-			meshObjectPtr->SimplifyMeshSSMOnce();
+			if (currentSSMRate > 0) currentSSMRate--;
+			meshObjectPtr->SetSSMRate(currentSSMRate);
+		}
+	}
+
+	else if (e->KeyChar == '2') {
+		if (meshInited) {
+			if (currentSSMRate < meshObjectPtr->GetSkeletonMeshsSize() - 1) currentSSMRate++;
+			meshObjectPtr->SetSSMRate(currentSSMRate);
 		}
 	}
 }
@@ -715,7 +727,7 @@ private: System::Void timer1_Tick(System::Object^ sender, System::EventArgs^ e) 
 	
 }
 private: System::Void trackBar1_ValueChanged(System::Object^ sender, System::EventArgs^ e) {
-	meshObjectPtr->SetRate(this->trackBar1->Value);
+	meshObjectPtr->SetQEMRate(this->trackBar1->Value);
 
 	// update the label
 	this->label8->Text = System::Convert::ToString(this->trackBar1->Value);

@@ -1,9 +1,10 @@
 #pragma once
 #include"GLMesh.h"
 
-struct Edge;
+class Edge;
 
-struct Vertex {
+class Vertex {
+public:
 	Vertex() {
 		_point = glm::vec3(0.0f);
 		_idx = -1;
@@ -22,6 +23,10 @@ struct Vertex {
 		totalDistanceOfOneRing = 0.0f;
 	}
 
+	bool operator==(const Vertex& v) {
+		return _idx == v._idx;
+	}
+
 	glm::vec3 _point;
 	std::vector<Vertex*> oneRingVertices;
 	std::vector<Edge*> oneRingEdges;
@@ -35,7 +40,8 @@ struct Vertex {
 	bool _isDeleted;
 };
 
-struct Edge {
+class Edge {
+public:
 	Edge() {
 		_idx = -1;
 		_isDeleted = false;
@@ -47,6 +53,10 @@ struct Edge {
 
 		_idx = idx;
 		_isDeleted = false;
+	}
+
+	bool operator==(const Edge& e) {
+		return _idx == e._idx;
 	}
 
 	Vertex* _i;
@@ -75,9 +85,17 @@ public:
 
 	// simplify our mesh with ssm algorithm
 	void SimplifyMeshSSMOnce();
+	void SimplifyMeshSSM(int edgesToLeft);
 
 	// print debug info
 	void PrintSkeletonMeshInfo();
+
+	// get the undeleted edges and vertices number
+	int GetUndeletedEdgesNumber();
+	int GetUndeletedVerticesNumber();
+
+	// helper function to reload the shader
+	void LoadToShader();
 
 private:
 	// we dont sort our vector, so our pointer wont get useless
@@ -105,8 +123,5 @@ private:
 
 	// vao for rendering the line
 	GLuint lineVAO;
-
-	// helper function to reload the shader
-	void LoadToShader();
 };
 

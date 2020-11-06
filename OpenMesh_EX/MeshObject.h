@@ -62,20 +62,21 @@ public:
 	void DebugRender(Shader shader);
 	void PrintSkeletonMeshInfo();
 
-	void SetRate(int rate);
+	// setting the current model/skeleton mesh to be used
+	void SetQEMRate(int rate);
+	void SetSSMRate(int rate);
 
-	// the current model to be render
+	// the current model to be rendered
 	GLMesh* modelToRender;
-	// decrease the vertex number
-	
-	void SimplifyMeshQEMOnce();
-	void SimplifyMeshSSMOnce();
+	// the current SkeletonMesh to be rendered
+	SkeletonMesh* skeletonMeshToRender;
 
 #pragma region Get Mesh Info
 	int GetVerticesNumber();
 	int GetEdgesNumber();
 	int GetFacesNumber();
 	int GetModelsSize();
+	int GetSkeletonMeshsSize();
 #pragma endregion
 
 #pragma region Skeleton Extraction
@@ -98,10 +99,6 @@ private:
 
 	// the original model
 	GLMesh model;
-	// the model to be save in all rate
-	std::vector<GLMesh> models;
-	// mesh simplify rate(id)
-	int currentIDToRender;
 
 #pragma region Mesh Simplification QEM
 	// some added properties
@@ -129,22 +126,24 @@ private:
 	// rearrange the heap
 	void RearrangeHeap();
 
+	// the model to be save in all rate
+	std::vector<GLMesh> models;
+	// mesh simplify rate(id)
+	int currentQEMIDToRender;
+
 #pragma endregion
 
 #pragma region Mesh Simplification SSM
-	// some added properties
-	// optimization purpose: total distance of base vertex and its adjadent vertices
-	OpenMesh::VPropHandleT<double> totalDistance;
-	// halfedge cost
-	OpenMesh::HPropHandleT<double> heCost;
-
-	int lowestCostHalfEdgeID;
-
+	// called the skeleton mesh initSSM
 	void InitSSM();
-	float F(MyMesh::HalfedgeHandle heh, bool isInit);
 
 	// the ssm part of skeleton mesh
 	SkeletonMesh skeletonMesh;
+
+	// the 100 skeletonMeshs
+	std::vector<SkeletonMesh> skeletonMeshs;
+	// mesh simplify rate(id)
+	int currentSSMIDToRender;
 #pragma endregion
 
 	// debug purpose
@@ -152,5 +151,9 @@ private:
 	void SSMRecalculateCollapseVerticesToRender();
 	std::vector<MyMesh::VertexHandle> CollapseVerticesToRender;
 	bool CollapseRecalculated;
+
+	// debug used
+	void SimplifyMeshQEMOnce();
+	void SimplifyMeshSSMOnce();
 };
 
