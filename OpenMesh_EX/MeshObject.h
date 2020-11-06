@@ -90,6 +90,8 @@ public:
 	double calcAreaOfThreePoints(MyMesh::Point& a, MyMesh::Point& b, MyMesh::Point& c);
 
 	double GetOneRingArea(MyMesh& mesh, MyMesh::VertexIter& v_it);
+
+	GLMesh SEModel;
 	// decrease the vertex number 
 #pragma endregion
 

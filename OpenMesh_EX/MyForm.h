@@ -87,6 +87,15 @@ namespace OpenMesh_EX {
 	private: System::Windows::Forms::Label^ label11;
 	private: System::Windows::Forms::Label^ label13;
 	private: System::Windows::Forms::Button^ button1;
+	private: System::Windows::Forms::Label^ label14;
+	private: System::Windows::Forms::Label^ label15;
+	private: System::Windows::Forms::TableLayoutPanel^ tableLayoutPanel8;
+	private: System::Windows::Forms::Label^ label16;
+	private: System::Windows::Forms::Label^ label17;
+	private: System::Windows::Forms::TrackBar^ trackBar2;
+	private: System::Windows::Forms::ToolStripMenuItem^ modeToolStripMenuItem;
+	private: System::Windows::Forms::ToolStripMenuItem^ qEMToolStripMenuItem;
+	private: System::Windows::Forms::ToolStripMenuItem^ sSMToolStripMenuItem;
 
 
 
@@ -119,6 +128,9 @@ namespace OpenMesh_EX {
 			this->fileToolStripMenuItem = (gcnew System::Windows::Forms::ToolStripMenuItem());
 			this->loadModelToolStripMenuItem = (gcnew System::Windows::Forms::ToolStripMenuItem());
 			this->saveModelToolStripMenuItem = (gcnew System::Windows::Forms::ToolStripMenuItem());
+			this->modeToolStripMenuItem = (gcnew System::Windows::Forms::ToolStripMenuItem());
+			this->qEMToolStripMenuItem = (gcnew System::Windows::Forms::ToolStripMenuItem());
+			this->sSMToolStripMenuItem = (gcnew System::Windows::Forms::ToolStripMenuItem());
 			this->openModelDialog = (gcnew System::Windows::Forms::OpenFileDialog());
 			this->saveModelDialog = (gcnew System::Windows::Forms::SaveFileDialog());
 			this->hkoglPanelControl1 = (gcnew HKOGLPanel::HKOGLPanelControl());
@@ -136,14 +148,20 @@ namespace OpenMesh_EX {
 			this->tableLayoutPanel4 = (gcnew System::Windows::Forms::TableLayoutPanel());
 			this->label3 = (gcnew System::Windows::Forms::Label());
 			this->label2 = (gcnew System::Windows::Forms::Label());
+			this->label13 = (gcnew System::Windows::Forms::Label());
+			this->label11 = (gcnew System::Windows::Forms::Label());
 			this->label10 = (gcnew System::Windows::Forms::Label());
-			this->trackBar1 = (gcnew System::Windows::Forms::TrackBar());
 			this->tableLayoutPanel7 = (gcnew System::Windows::Forms::TableLayoutPanel());
 			this->label8 = (gcnew System::Windows::Forms::Label());
 			this->label9 = (gcnew System::Windows::Forms::Label());
-			this->label11 = (gcnew System::Windows::Forms::Label());
-			this->label13 = (gcnew System::Windows::Forms::Label());
 			this->button1 = (gcnew System::Windows::Forms::Button());
+			this->trackBar1 = (gcnew System::Windows::Forms::TrackBar());
+			this->label14 = (gcnew System::Windows::Forms::Label());
+			this->label15 = (gcnew System::Windows::Forms::Label());
+			this->tableLayoutPanel8 = (gcnew System::Windows::Forms::TableLayoutPanel());
+			this->label16 = (gcnew System::Windows::Forms::Label());
+			this->label17 = (gcnew System::Windows::Forms::Label());
+			this->trackBar2 = (gcnew System::Windows::Forms::TrackBar());
 			this->tableLayoutPanel2 = (gcnew System::Windows::Forms::TableLayoutPanel());
 			this->menuStrip1->SuspendLayout();
 			this->tableLayoutPanel1->SuspendLayout();
@@ -151,14 +169,19 @@ namespace OpenMesh_EX {
 			this->tableLayoutPanel6->SuspendLayout();
 			this->tableLayoutPanel5->SuspendLayout();
 			this->tableLayoutPanel4->SuspendLayout();
-			(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->trackBar1))->BeginInit();
 			this->tableLayoutPanel7->SuspendLayout();
+			(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->trackBar1))->BeginInit();
+			this->tableLayoutPanel8->SuspendLayout();
+			(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->trackBar2))->BeginInit();
 			this->tableLayoutPanel2->SuspendLayout();
 			this->SuspendLayout();
 			// 
 			// menuStrip1
 			// 
-			this->menuStrip1->Items->AddRange(gcnew cli::array< System::Windows::Forms::ToolStripItem^  >(1) { this->fileToolStripMenuItem });
+			this->menuStrip1->Items->AddRange(gcnew cli::array< System::Windows::Forms::ToolStripItem^  >(2) {
+				this->fileToolStripMenuItem,
+					this->modeToolStripMenuItem
+			});
 			this->menuStrip1->Location = System::Drawing::Point(0, 0);
 			this->menuStrip1->Name = L"menuStrip1";
 			this->menuStrip1->Size = System::Drawing::Size(1239, 24);
@@ -188,6 +211,30 @@ namespace OpenMesh_EX {
 			this->saveModelToolStripMenuItem->Size = System::Drawing::Size(137, 22);
 			this->saveModelToolStripMenuItem->Text = L"Save Model";
 			this->saveModelToolStripMenuItem->Click += gcnew System::EventHandler(this, &MyForm::saveModelToolStripMenuItem_Click);
+			// 
+			// modeToolStripMenuItem
+			// 
+			this->modeToolStripMenuItem->DropDownItems->AddRange(gcnew cli::array< System::Windows::Forms::ToolStripItem^  >(2) {
+				this->qEMToolStripMenuItem,
+					this->sSMToolStripMenuItem
+			});
+			this->modeToolStripMenuItem->Name = L"modeToolStripMenuItem";
+			this->modeToolStripMenuItem->Size = System::Drawing::Size(50, 20);
+			this->modeToolStripMenuItem->Text = L"Mode";
+			// 
+			// qEMToolStripMenuItem
+			// 
+			this->qEMToolStripMenuItem->Name = L"qEMToolStripMenuItem";
+			this->qEMToolStripMenuItem->Size = System::Drawing::Size(100, 22);
+			this->qEMToolStripMenuItem->Text = L"QEM";
+			this->qEMToolStripMenuItem->Click += gcnew System::EventHandler(this, &MyForm::qEMToolStripMenuItem_Click);
+			// 
+			// sSMToolStripMenuItem
+			// 
+			this->sSMToolStripMenuItem->Name = L"sSMToolStripMenuItem";
+			this->sSMToolStripMenuItem->Size = System::Drawing::Size(100, 22);
+			this->sSMToolStripMenuItem->Text = L"SSM";
+			this->sSMToolStripMenuItem->Click += gcnew System::EventHandler(this, &MyForm::sSMToolStripMenuItem_Click);
 			// 
 			// openModelDialog
 			// 
@@ -263,10 +310,14 @@ namespace OpenMesh_EX {
 			this->tableLayoutPanel3->Controls->Add(this->tableLayoutPanel7, 0, 6);
 			this->tableLayoutPanel3->Controls->Add(this->button1, 0, 10);
 			this->tableLayoutPanel3->Controls->Add(this->trackBar1, 0, 7);
+			this->tableLayoutPanel3->Controls->Add(this->label14, 0, 11);
+			this->tableLayoutPanel3->Controls->Add(this->label15, 0, 12);
+			this->tableLayoutPanel3->Controls->Add(this->tableLayoutPanel8, 0, 13);
+			this->tableLayoutPanel3->Controls->Add(this->trackBar2, 0, 14);
 			this->tableLayoutPanel3->Dock = System::Windows::Forms::DockStyle::Fill;
 			this->tableLayoutPanel3->Location = System::Drawing::Point(619, 3);
 			this->tableLayoutPanel3->Name = L"tableLayoutPanel3";
-			this->tableLayoutPanel3->RowCount = 12;
+			this->tableLayoutPanel3->RowCount = 16;
 			this->tableLayoutPanel3->RowStyles->Add((gcnew System::Windows::Forms::RowStyle(System::Windows::Forms::SizeType::Absolute, 40)));
 			this->tableLayoutPanel3->RowStyles->Add((gcnew System::Windows::Forms::RowStyle(System::Windows::Forms::SizeType::Absolute, 40)));
 			this->tableLayoutPanel3->RowStyles->Add((gcnew System::Windows::Forms::RowStyle(System::Windows::Forms::SizeType::Absolute, 40)));
@@ -278,8 +329,11 @@ namespace OpenMesh_EX {
 			this->tableLayoutPanel3->RowStyles->Add((gcnew System::Windows::Forms::RowStyle(System::Windows::Forms::SizeType::Absolute, 44)));
 			this->tableLayoutPanel3->RowStyles->Add((gcnew System::Windows::Forms::RowStyle(System::Windows::Forms::SizeType::Absolute, 40)));
 			this->tableLayoutPanel3->RowStyles->Add((gcnew System::Windows::Forms::RowStyle(System::Windows::Forms::SizeType::Absolute, 40)));
+			this->tableLayoutPanel3->RowStyles->Add((gcnew System::Windows::Forms::RowStyle(System::Windows::Forms::SizeType::Absolute, 40)));
+			this->tableLayoutPanel3->RowStyles->Add((gcnew System::Windows::Forms::RowStyle(System::Windows::Forms::SizeType::Absolute, 40)));
+			this->tableLayoutPanel3->RowStyles->Add((gcnew System::Windows::Forms::RowStyle(System::Windows::Forms::SizeType::Absolute, 40)));
+			this->tableLayoutPanel3->RowStyles->Add((gcnew System::Windows::Forms::RowStyle(System::Windows::Forms::SizeType::Absolute, 40)));
 			this->tableLayoutPanel3->RowStyles->Add((gcnew System::Windows::Forms::RowStyle()));
-			this->tableLayoutPanel3->RowStyles->Add((gcnew System::Windows::Forms::RowStyle(System::Windows::Forms::SizeType::Absolute, 20)));
 			this->tableLayoutPanel3->Size = System::Drawing::Size(611, 668);
 			this->tableLayoutPanel3->TabIndex = 3;
 			// 
@@ -430,6 +484,30 @@ namespace OpenMesh_EX {
 			this->label2->Text = L"Vertex Number: ";
 			this->label2->TextAlign = System::Drawing::ContentAlignment::MiddleCenter;
 			// 
+			// label13
+			// 
+			this->label13->AutoSize = true;
+			this->label13->Dock = System::Windows::Forms::DockStyle::Fill;
+			this->label13->Location = System::Drawing::Point(3, 316);
+			this->label13->Name = L"label13";
+			this->label13->Size = System::Drawing::Size(605, 44);
+			this->label13->TabIndex = 8;
+			this->label13->Text = L"================================================================================="
+				L"==================";
+			this->label13->TextAlign = System::Drawing::ContentAlignment::MiddleCenter;
+			// 
+			// label11
+			// 
+			this->label11->AutoSize = true;
+			this->label11->BorderStyle = System::Windows::Forms::BorderStyle::FixedSingle;
+			this->label11->Dock = System::Windows::Forms::DockStyle::Fill;
+			this->label11->Location = System::Drawing::Point(3, 200);
+			this->label11->Name = L"label11";
+			this->label11->Size = System::Drawing::Size(605, 40);
+			this->label11->TabIndex = 6;
+			this->label11->Text = L"QEM Mesh Simplification";
+			this->label11->TextAlign = System::Drawing::ContentAlignment::MiddleCenter;
+			// 
 			// label10
 			// 
 			this->label10->AutoSize = true;
@@ -441,16 +519,6 @@ namespace OpenMesh_EX {
 			this->label10->TabIndex = 4;
 			this->label10->Text = L"Skeleton Extraction";
 			this->label10->TextAlign = System::Drawing::ContentAlignment::MiddleCenter;
-			// 
-			// trackBar1
-			// 
-			this->trackBar1->Dock = System::Windows::Forms::DockStyle::Fill;
-			this->trackBar1->Location = System::Drawing::Point(3, 283);
-			this->trackBar1->Maximum = 100;
-			this->trackBar1->Name = L"trackBar1";
-			this->trackBar1->Size = System::Drawing::Size(605, 30);
-			this->trackBar1->TabIndex = 4;
-			this->trackBar1->ValueChanged += gcnew System::EventHandler(this, &MyForm::trackBar1_ValueChanged);
 			// 
 			// tableLayoutPanel7
 			// 
@@ -489,32 +557,8 @@ namespace OpenMesh_EX {
 			this->label9->Name = L"label9";
 			this->label9->Size = System::Drawing::Size(296, 34);
 			this->label9->TabIndex = 1;
-			this->label9->Text = L"Current Simplified Rate:";
+			this->label9->Text = L"Current QEM Simplified Rate:";
 			this->label9->TextAlign = System::Drawing::ContentAlignment::MiddleCenter;
-			// 
-			// label11
-			// 
-			this->label11->AutoSize = true;
-			this->label11->BorderStyle = System::Windows::Forms::BorderStyle::FixedSingle;
-			this->label11->Dock = System::Windows::Forms::DockStyle::Fill;
-			this->label11->Location = System::Drawing::Point(3, 200);
-			this->label11->Name = L"label11";
-			this->label11->Size = System::Drawing::Size(605, 40);
-			this->label11->TabIndex = 6;
-			this->label11->Text = L"Mesh Simplification";
-			this->label11->TextAlign = System::Drawing::ContentAlignment::MiddleCenter;
-			// 
-			// label13
-			// 
-			this->label13->AutoSize = true;
-			this->label13->Dock = System::Windows::Forms::DockStyle::Fill;
-			this->label13->Location = System::Drawing::Point(3, 316);
-			this->label13->Name = L"label13";
-			this->label13->Size = System::Drawing::Size(605, 44);
-			this->label13->TabIndex = 8;
-			this->label13->Text = L"================================================================================="
-				L"==================";
-			this->label13->TextAlign = System::Drawing::ContentAlignment::MiddleCenter;
 			// 
 			// button1
 			// 
@@ -525,6 +569,92 @@ namespace OpenMesh_EX {
 			this->button1->Text = L"Extract Skeleton";
 			this->button1->UseVisualStyleBackColor = true;
 			this->button1->Click += gcnew System::EventHandler(this, &MyForm::button1_Click);
+			// 
+			// trackBar1
+			// 
+			this->trackBar1->Dock = System::Windows::Forms::DockStyle::Fill;
+			this->trackBar1->Location = System::Drawing::Point(3, 283);
+			this->trackBar1->Maximum = 100;
+			this->trackBar1->Name = L"trackBar1";
+			this->trackBar1->Size = System::Drawing::Size(605, 30);
+			this->trackBar1->TabIndex = 4;
+			this->trackBar1->ValueChanged += gcnew System::EventHandler(this, &MyForm::trackBar1_ValueChanged);
+			// 
+			// label14
+			// 
+			this->label14->AutoSize = true;
+			this->label14->Dock = System::Windows::Forms::DockStyle::Fill;
+			this->label14->Location = System::Drawing::Point(3, 440);
+			this->label14->Name = L"label14";
+			this->label14->Size = System::Drawing::Size(605, 40);
+			this->label14->TabIndex = 9;
+			this->label14->Text = L"================================================================================="
+				L"==================";
+			this->label14->TextAlign = System::Drawing::ContentAlignment::MiddleCenter;
+			// 
+			// label15
+			// 
+			this->label15->AutoSize = true;
+			this->label15->BorderStyle = System::Windows::Forms::BorderStyle::FixedSingle;
+			this->label15->Dock = System::Windows::Forms::DockStyle::Fill;
+			this->label15->Location = System::Drawing::Point(3, 480);
+			this->label15->Name = L"label15";
+			this->label15->Size = System::Drawing::Size(605, 40);
+			this->label15->TabIndex = 10;
+			this->label15->Text = L"SSM Mesh Simplification";
+			this->label15->TextAlign = System::Drawing::ContentAlignment::MiddleCenter;
+			// 
+			// tableLayoutPanel8
+			// 
+			this->tableLayoutPanel8->ColumnCount = 2;
+			this->tableLayoutPanel8->ColumnStyles->Add((gcnew System::Windows::Forms::ColumnStyle(System::Windows::Forms::SizeType::Percent,
+				50)));
+			this->tableLayoutPanel8->ColumnStyles->Add((gcnew System::Windows::Forms::ColumnStyle(System::Windows::Forms::SizeType::Percent,
+				50)));
+			this->tableLayoutPanel8->Controls->Add(this->label16, 1, 0);
+			this->tableLayoutPanel8->Controls->Add(this->label17, 0, 0);
+			this->tableLayoutPanel8->Dock = System::Windows::Forms::DockStyle::Fill;
+			this->tableLayoutPanel8->Location = System::Drawing::Point(3, 523);
+			this->tableLayoutPanel8->Name = L"tableLayoutPanel8";
+			this->tableLayoutPanel8->RowCount = 1;
+			this->tableLayoutPanel8->RowStyles->Add((gcnew System::Windows::Forms::RowStyle(System::Windows::Forms::SizeType::Percent, 50)));
+			this->tableLayoutPanel8->Size = System::Drawing::Size(605, 34);
+			this->tableLayoutPanel8->TabIndex = 11;
+			// 
+			// label16
+			// 
+			this->label16->AutoSize = true;
+			this->label16->BorderStyle = System::Windows::Forms::BorderStyle::FixedSingle;
+			this->label16->Dock = System::Windows::Forms::DockStyle::Fill;
+			this->label16->Location = System::Drawing::Point(305, 0);
+			this->label16->Name = L"label16";
+			this->label16->Size = System::Drawing::Size(297, 34);
+			this->label16->TabIndex = 2;
+			this->label16->Text = L"0";
+			this->label16->TextAlign = System::Drawing::ContentAlignment::MiddleCenter;
+			// 
+			// label17
+			// 
+			this->label17->AutoSize = true;
+			this->label17->BorderStyle = System::Windows::Forms::BorderStyle::FixedSingle;
+			this->label17->Dock = System::Windows::Forms::DockStyle::Fill;
+			this->label17->Location = System::Drawing::Point(3, 0);
+			this->label17->Name = L"label17";
+			this->label17->Size = System::Drawing::Size(296, 34);
+			this->label17->TabIndex = 1;
+			this->label17->Text = L"Current SSM Simplified Rate:";
+			this->label17->TextAlign = System::Drawing::ContentAlignment::MiddleCenter;
+			// 
+			// trackBar2
+			// 
+			this->trackBar2->Dock = System::Windows::Forms::DockStyle::Fill;
+			this->trackBar2->Enabled = false;
+			this->trackBar2->Location = System::Drawing::Point(3, 563);
+			this->trackBar2->Maximum = 100;
+			this->trackBar2->Name = L"trackBar2";
+			this->trackBar2->Size = System::Drawing::Size(605, 34);
+			this->trackBar2->TabIndex = 12;
+			this->trackBar2->ValueChanged += gcnew System::EventHandler(this, &MyForm::trackBar2_ValueChanged);
 			// 
 			// tableLayoutPanel2
 			// 
@@ -562,9 +692,12 @@ namespace OpenMesh_EX {
 			this->tableLayoutPanel5->PerformLayout();
 			this->tableLayoutPanel4->ResumeLayout(false);
 			this->tableLayoutPanel4->PerformLayout();
-			(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->trackBar1))->EndInit();
 			this->tableLayoutPanel7->ResumeLayout(false);
 			this->tableLayoutPanel7->PerformLayout();
+			(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->trackBar1))->EndInit();
+			this->tableLayoutPanel8->ResumeLayout(false);
+			this->tableLayoutPanel8->PerformLayout();
+			(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->trackBar2))->EndInit();
 			this->tableLayoutPanel2->ResumeLayout(false);
 			this->ResumeLayout(false);
 			this->PerformLayout();
@@ -605,9 +738,8 @@ private: System::Void hkoglPanelControl1_Paint(System::Object^  sender, System::
 	float scale = 0.1f;
 	shader.setUniformMatrix4fv("model", glm::scale(vec3(scale, scale, scale)));
 
-	// render twice
+	// render 
 	if (meshInited) {
-		currentMode = Mode::SSM;
 		meshObjectPtr->Render(shader, currentMode);
 	}
 }
@@ -691,6 +823,9 @@ private: System::Void openModelDialog_FileOk(System::Object^  sender, System::Co
 
 	this->trackBar1->Minimum = 0;
 	this->trackBar1->Maximum = meshObjectPtr->GetModelsSize() - 1;
+
+	this->trackBar2->Minimum = 0;
+	this->trackBar2->Maximum = meshObjectPtr->GetSkeletonMeshsSize() - 1;
 }
 private: System::Void saveModelToolStripMenuItem_Click(System::Object^  sender, System::EventArgs^  e)
 {
@@ -715,9 +850,21 @@ private: System::Void timer1_Tick(System::Object^ sender, System::EventArgs^ e) 
 
 	// update the mesh information part
 	if (meshObjectPtr) {
-		this->label3->Text = System::Convert::ToString(meshObjectPtr->GetVerticesNumber());
-		this->label4->Text = System::Convert::ToString(meshObjectPtr->GetEdgesNumber());
-		this->label6->Text = System::Convert::ToString(meshObjectPtr->GetFacesNumber());
+		if (currentMode == Mode::QEM) {
+			this->label3->Text = System::Convert::ToString(meshObjectPtr->GetVerticesNumber());
+			this->label4->Text = System::Convert::ToString(meshObjectPtr->GetEdgesNumber());
+			this->label6->Text = System::Convert::ToString(meshObjectPtr->GetFacesNumber());
+		}
+		else if (currentMode == Mode::SE) {
+			this->label3->Text = System::Convert::ToString(meshObjectPtr->SEModel.mesh.n_vertices());
+			this->label4->Text = System::Convert::ToString(meshObjectPtr->SEModel.mesh.n_edges());
+			this->label6->Text = System::Convert::ToString(meshObjectPtr->SEModel.mesh.n_faces());
+		}
+		else if (currentMode == Mode::SSM) {
+			this->label3->Text = System::Convert::ToString(meshObjectPtr->skeletonMeshToRender->GetUndeletedVerticesNumber());
+			this->label4->Text = System::Convert::ToString(meshObjectPtr->skeletonMeshToRender->GetUndeletedEdgesNumber());
+			this->label6->Text = "(N/A)";
+		}
 	}
 	else {
 		this->label3->Text = "(N/A)";
@@ -733,8 +880,28 @@ private: System::Void trackBar1_ValueChanged(System::Object^ sender, System::Eve
 	this->label8->Text = System::Convert::ToString(this->trackBar1->Value);
 }
 private: System::Void button1_Click(System::Object^ sender, System::EventArgs^ e) {
-	// simplify mesh
-	meshObjectPtr->InitSE(90);
+	// skeleton extraction
+	currentMode = Mode::SE;
+}
+private: System::Void trackBar2_ValueChanged(System::Object^ sender, System::EventArgs^ e) {
+	meshObjectPtr->SetSSMRate(this->trackBar2->Value);
+
+	// update the label
+	this->label16->Text = System::Convert::ToString(this->trackBar2->Value);
+}
+private: System::Void qEMToolStripMenuItem_Click(System::Object^ sender, System::EventArgs^ e) {
+	currentMode = Mode::QEM;
+
+	// lock the trackBar2
+	this->trackBar2->Enabled = false;
+	this->trackBar1->Enabled = true;
+}
+private: System::Void sSMToolStripMenuItem_Click(System::Object^ sender, System::EventArgs^ e) {
+	currentMode = Mode::SSM;
+
+	// lock the trackBar1
+	this->trackBar1->Enabled = false;
+	this->trackBar2->Enabled = true;
 }
 };
 }

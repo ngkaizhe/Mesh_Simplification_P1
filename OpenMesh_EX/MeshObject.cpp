@@ -33,9 +33,9 @@ bool MeshObject::Init(std::string fileName)
 	models.reserve(101);
 
 	// start to initial the qem model
-	// this->InitQEM();
+	this->InitQEM();
 	// start to initial the parameterization
-	// this->InitSE();
+	this->InitSE(90);
 	// start to initial the ssm model
 	this->InitSSM();
 
@@ -46,7 +46,8 @@ bool MeshObject::Init(std::string fileName)
 
 void MeshObject::Render(Shader shader, Mode mode)
 {
-	if (mode == Mode::QEM || mode == Mode::SE) {
+	// qem mesh simplification
+	if (mode == Mode::QEM) {
 		// render face part
 		shader.setUniform3fv("color", glm::vec3(1.0f, 1.0f, 0.0f));
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -64,7 +65,28 @@ void MeshObject::Render(Shader shader, Mode mode)
 		glDrawArrays(GL_LINES, 0, this->modelToRender->mesh.n_edges() * 2);
 		glBindVertexArray(0);
 	}
+
+	// skeleton extraction
+	else if (mode == Mode::SE) {
+		// render face part
+		shader.setUniform3fv("color", glm::vec3(1.0f, 1.0f, 0.0f));
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+		shader.use();
+		// render the current rate to use
+		glBindVertexArray(this->SEModel.vao);
+		glDrawElements(GL_TRIANGLES, this->SEModel.mesh.n_faces() * 3, GL_UNSIGNED_INT, 0);
+		glBindVertexArray(0);
+
+
+		// render line / wireframe part
+		shader.setUniform3fv("color", glm::vec3(0.0f, 0.0f, 0.0f));
+		shader.use();
+		glBindVertexArray(this->SEModel.lineVAO);
+		glDrawArrays(GL_LINES, 0, this->SEModel.mesh.n_edges() * 2);
+		glBindVertexArray(0);
+	}
 	
+	// shape, sampling cost, mesh simplification
 	else if (mode == Mode::SSM) {
 		// render line but with our skeleton mesh
 		shader.setUniform3fv("color", glm::vec3(0.0f, 0.0f, 0.0f));
@@ -140,7 +162,6 @@ void MeshObject::SetQEMRate(int rate) {
 		this->modelToRender = &models[this->currentQEMIDToRender];
 	}
 }
-
 void MeshObject::SetSSMRate(int rate) {
 	// if the rate is different to our current rate change the pointer then
 	if (rate != this->currentSSMIDToRender) {
@@ -411,6 +432,7 @@ void MeshObject::SimplifyMeshQEM(int faceLeft, int simplifiedRate)
 		// might let our edge decreased by 3
 		// get the edge handle from the first element of heap
 		MyMesh::HalfedgeHandle heh;
+
 		// as we update our heap only after the while loop finished
 		for (s_it = heap.begin(); s_it != heap.end(); s_it++) {
 			MyMesh::EdgeHandle eh = model.mesh.edge_handle(s_it->_idx);
@@ -521,7 +543,6 @@ void MeshObject::SimplifyMeshQEM(int faceLeft, int simplifiedRate)
 			}
 		}
 	}
-
 }
 
 int MeshObject::GetUndeletedFacesNumber() {
@@ -619,9 +640,10 @@ void MeshObject::InitSE(int id) {
 
 	Parameterization();
 	this->model.mesh.garbage_collection();
-	this->model.LoadToShader();
 
-	this->modelToRender = &model;
+	// save the state
+	SEModel = model;
+	SEModel.LoadToShader();
 }
 
 double MeshObject::calcAreaOfThreePoints(MyMesh::Point& a, MyMesh::Point& b, MyMesh::Point& c) {
