@@ -70,6 +70,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>WIN32;NDEBUG;_USE_MATH_DEFINES;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\DLLs</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <AdditionalDependencies>freeglut.lib;opengl32.lib;glew32.lib;glu32.lib;OpenMeshCore.lib</AdditionalDependencies>

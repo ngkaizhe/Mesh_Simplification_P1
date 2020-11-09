@@ -775,6 +775,18 @@ private: System::Void hkoglPanelControl1_KeyPress(System::Object^ sender, System
 			meshObjectPtr->SetSSMRate(currentSSMRate);
 		}
 	}
+	else if (e->KeyChar == 'a') {
+		meshObjectPtr->ResetModel();
+		currentMode = Mode::QEM;
+	}
+	else if (e->KeyChar == 'b') {
+		currentMode = Mode::SE;
+		//meshObjectPtr->ResetModel(50);
+		for (int i = 0; i < 3; i++) {
+			meshObjectPtr->InitSE(50);
+			//meshObjectPtr->Parameterization();
+		}
+	}
 }
 private: System::Void hkoglPanelControl1_MouseDown(System::Object^  sender, System::Windows::Forms::MouseEventArgs^  e)
 {
@@ -882,6 +894,7 @@ private: System::Void trackBar1_ValueChanged(System::Object^ sender, System::Eve
 private: System::Void button1_Click(System::Object^ sender, System::EventArgs^ e) {
 	// skeleton extraction
 	currentMode = Mode::SE;
+	//meshObjectPtr->InitSE(80);
 }
 private: System::Void trackBar2_ValueChanged(System::Object^ sender, System::EventArgs^ e) {
 	meshObjectPtr->SetSSMRate(this->trackBar2->Value);

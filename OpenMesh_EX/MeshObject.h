@@ -82,6 +82,8 @@ public:
 #pragma region Skeleton Extraction
 	void InitSE(int id);
 
+	void ResetModel(int id = 0);
+
 	/*  Skeleton Extraction*/
 	void Parameterization();
 
@@ -101,6 +103,26 @@ private:
 
 	// the original model
 	GLMesh model;
+
+#pragma region Skeleton Extraction
+	MyMesh mesh;
+	double initPara = 0;
+	double power = 7.0;
+	double SL = 2.5;
+	double W_L = 0;
+	double W_H = 1.0;
+	double totalArea = 0;
+	int iterNum = 0;
+	std::vector<double>ori_OneRing;
+
+	OpenMesh::HPropHandleT<double> weight;
+	OpenMesh::VPropHandleT<double> or_area;
+	OpenMesh::VPropHandleT<int> matrixIndex;
+	OpenMesh::VPropHandleT<int> outAreaIndex;
+
+#pragma endregion
+
+
 
 #pragma region Mesh Simplification QEM
 	// some added properties
