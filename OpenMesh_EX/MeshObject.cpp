@@ -34,12 +34,13 @@ bool MeshObject::Init(std::string fileName)
 
 	// start to initial the qem model
 	this->InitQEM();
+	//models.push_back(model);
 	// start to initial the parameterization
-	for (int i = 0; i < 2; i++) {
-		this->InitSE(60);
+	for (int i = 0; i < 6; i++) {
+		this->InitSE(89);
 	}
 	// start to initial the ssm model
-	this->InitSSM();
+	this->InitSSM(_canCollapse);
 
 	CollapseRecalculated = false;
 
@@ -789,6 +790,7 @@ void MeshObject::Parameterization()
 				//ori_OneRing.push_back(onering_area);
 				mesh.property(or_area, *v_it) = onering_area;
 			}
+			_canCollapse[v_it->idx()] = true;
 			mesh.property(matrixIndex, *v_it) = count++;
 			mesh.property(outAreaIndex, *v_it) = 0;
 		}
@@ -839,6 +841,7 @@ void MeshObject::Parameterization()
 	// fiil matrix
 	for (MyMesh::VertexIter v_it = mesh.vertices_begin(); v_it != mesh.vertices_end(); ++v_it)
 	{
+		double tmpWL = 0;
 		if (!mesh.is_boundary(*v_it))
 		{
 			//
@@ -848,14 +851,15 @@ void MeshObject::Parameterization()
 			else   //wH^t+1 = wH^t * sqrt(A^0 / A^t)
 			{
 				double onering_area = GetOneRingArea(mesh, v_it);
-				/*if (onering_area < 0) {
+				if (onering_area == 0.00001) {
 					mesh.property(outAreaIndex, *v_it) = 1;
-					W_H = sqrt(mesh.property(or_area, *v_it) / 0.0001);
-					if(W_L > initPara * power / 5.0)
-						W_L = initPara * power / 10.0;
+					_canCollapse[v_it->idx()] = false;
+					tmpWL = 0.000001;
 				}
-				else*/
-					W_H = sqrt(mesh.property(or_area, *v_it) / onering_area);
+				else
+					tmpWL = W_L;
+				//else
+				W_H = sqrt(mesh.property(or_area, *v_it) / onering_area);
 			}
 			int i = mesh.property(matrixIndex, *v_it);
 			double totalWeight = 0;
@@ -870,11 +874,11 @@ void MeshObject::Parameterization()
 				else
 				{
 					int j = mesh.property(matrixIndex, *vv_it);
-					A.insert(i, j) = w * W_L;
+					A.insert(i, j) = w * tmpWL;
 					totalWeight += w;
 				}
 			}
-			A.insert(i, i) = -totalWeight * W_L;
+			A.insert(i, i) = -totalWeight * tmpWL;
 
 			A.insert(count+i, i) = W_H;
 
@@ -906,9 +910,10 @@ void MeshObject::Parameterization()
 	{
 		if (!mesh.is_boundary(*v_it)) {
 			int i = mesh.property(matrixIndex, *v_it);
-			//int check = mesh.property(outAreaIndex, *v_it);
+			int check = mesh.property(outAreaIndex, *v_it);
 			//if (check == 0) {
-			mesh.set_point(*v_it, MyMesh::Point(X[i], Y[i], Z[i]));
+				mesh.set_point(*v_it, MyMesh::Point(X[i], Y[i], Z[i]));
+
 			//}
 		}
 	}//
@@ -916,11 +921,11 @@ void MeshObject::Parameterization()
 	for (MyMesh::VertexIter v_it = model.mesh.vertices_begin(); v_it != model.mesh.vertices_end(); ++v_it)
 	{
 		int i = mesh.property(matrixIndex, *v_it);
-		//int check = mesh.property(outAreaIndex, *v_it);
+		int check = mesh.property(outAreaIndex, *v_it);
 			//std::cout << "Point [" << i <<"] = " << MyMesh::Point(X[i], Y[i], Z[i]) << std::endl;
 		//std::cout << "i :  " << i << std::endl;
 		if (i >= count || i < 0 ) {
-			std::cout << "Index out of range!! " << i << std::endl;
+			//std::cout << "Index out of range!! " << i << std::endl;
 			continue;
 		}
 			//model.mesh.set_point(*v_it, MyMesh::Point(mX[0], mY[0], mZ[0]));
@@ -930,243 +935,20 @@ void MeshObject::Parameterization()
 	std::cout << "Solve linear system finish11!\n" << std::endl;
 	iterNum++;
 	// solve linear system
-
-	/*
-	for (int it = 0; it < iterNum; it++) {
-		std::cout << "Iter index : " << it << std::endl;
-
-		double onering_area = GetOneRingArea(mesh, mesh.vertices_begin());
-		if (!isfinite(onering_area))
-			break;
-		std::cout << "onering_area : " << onering_area << std::endl;
-		//std::cout << "V count : " << count << std::endl;
-		//mesh.request_vertex_texcoords2D();
-		std::cout << "Start calculate weight!" << std::endl;
-		//calculate weight
-		MyMesh::HalfedgeHandle heh;
-		for (MyMesh::EdgeIter e_it = mesh.edges_begin(); e_it != mesh.edges_end(); ++e_it)
-		{
-			if (!mesh.is_boundary(*e_it))
-			{
-				GLdouble angle1, angle2, w;
-				MyMesh::HalfedgeHandle _heh = mesh.halfedge_handle(*e_it, 0);
-				MyMesh::Point pfrom = mesh.point(mesh.from_vertex_handle(_heh));
-				MyMesh::Point pto = mesh.point(mesh.to_vertex_handle(_heh));
-				MyMesh::Point po = mesh.point(mesh.opposite_vh(_heh));
-				MyMesh::Point poo = mesh.point(mesh.opposite_he_opposite_vh(_heh));
-
-				// weight cot(po -> form , po -> to) + cot(poo -> from, poo -> to)
-				OpenMesh::Vec3d v1 = (OpenMesh::Vec3d)(po - pfrom);
-				v1.normalize();
-				OpenMesh::Vec3d v2 = (OpenMesh::Vec3d)(po - pto);
-				v2.normalize();
-
-				angle1 = std::acos(OpenMesh::dot(v1, v2));
-
-				v1 = (OpenMesh::Vec3d)(poo - pfrom);
-				v1.normalize();
-				v2 = (OpenMesh::Vec3d)(poo - pto);
-				v2.normalize();
-
-				angle2 = std::acos(OpenMesh::dot(v1, v2));
-
-				w = (1.0 / std::tan(angle1)) + (1.0 / std::tan(angle2));
-
-				mesh.property(weight, _heh) = w;
-				mesh.property(weight, mesh.opposite_halfedge_handle(_heh)) = w;
-			}
-			else
-			{
-				MyMesh::HalfedgeHandle _heh = mesh.halfedge_handle(*e_it, 0);
-				mesh.property(weight, _heh) = 0;
-				mesh.property(weight, mesh.opposite_halfedge_handle(_heh)) =0;
-			}
-		}
-		std::cout << "Calculate weight finish!\n" << std::endl;
-
-		std::cout << "Start calculate matrix size!" << std::endl;
-
-		int fn = 0;
-		// calculate matrix size
-		if (it == 0) {
-			for (MyMesh::VertexIter v_it = mesh.vertices_begin(); v_it != mesh.vertices_end(); ++v_it)
-			{
-				//mesh.property(matrixIndex, *v_it) = count++;
-				if (mesh.is_boundary(*v_it))
-				{
-					mesh.property(matrixIndex, *v_it) = -1;
-				}
-				else
-				{
-					double onering_area = GetOneRingArea(mesh, v_it);
-					mesh.property(or_area, *v_it) = onering_area;
-					mesh.property(matrixIndex, *v_it) = count++;
-				}
-			}
-
-			for (MyMesh::FaceIter f_it = mesh.faces_begin(); f_it != mesh.faces_end(); ++f_it) {
-				
-				MyMesh::FaceVertexIter  fv_it = mesh.fv_iter(*f_it);
-				MyMesh::Point& P = mesh.point(*fv_it);  ++fv_it;
-				MyMesh::Point& Q = mesh.point(*fv_it);  ++fv_it;
-				MyMesh::Point& R = mesh.point(*fv_it);
-				//std::cout << "Face" <<fn << " (" << P << ")\n";
-				//std::cout << "Face" << fn << " (" << Q << ")\n";
-				//std::cout << "Face" << fn << " (" << Q << ")\n\n";
-
-				totalArea += calcAreaOfThreePoints(P, Q, R);
-				fn++;
-			}
-		}
-		//std::cout << "total Area : " << totalArea << std::endl;
-		//std::cout << "Fn : " << fn << std::endl;
-		if (it == 0)
-			W_L =  power * sqrt(totalArea/fn);
-		else
-			W_L = SL * W_L;
-		std::cout << "W_L : " << W_L << std::endl;
-
-		//std::cout << "W_L : " << W_L << std::endl;
-	//	std::cout << "Matrix size is " << count << std::endl;
-		std::cout << "Calculate matrix size finish!\n" << std::endl;
-
-		std::cout << "Start fill matrix!" << std::endl;
-
-		Eigen::SparseMatrix<double> A(2*count, count);
-
-		//Eigen::MatrixXd A(2 * count, count);// = Eigen::MatrixXd(2 * count, count);
-		Eigen::VectorXd BX(2*count);
-		Eigen::VectorXd BY(2*count);
-		Eigen::VectorXd BZ(2*count);
-		Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> linearSolver;
-		//Eigen::LeastSquaresConjugateGradient<Eigen::SparseMatrix<double>> linearSolver;
-		//Eigen::SparseQR<Eigen::SparseMatrix<double> > linearSolver;
-		BX.setZero();
-		BY.setZero();
-		BZ.setZero();
-
-		double W_H = 1.0;
-		// fiil matrix
-		for (MyMesh::VertexIter v_it = mesh.vertices_begin(); v_it != mesh.vertices_end(); ++v_it)
-		{
-			if (!mesh.is_boundary(*v_it))
-			{
-				//
-				if (it == 0) {
-					/*mesh.property(or_area, *v_it) = onering_area;
-					W_L = 0.001 * sqrt(onering_area);
-					W_H = 1.0;
-				}
-				else   //wH^t+1 = wH^t * sqrt(A^0 / A^t)
-				{
-					double onering_area = GetOneRingArea(mesh, v_it);
-					W_H = sqrt(mesh.property(or_area, *v_it) / onering_area);
-				}
-				int i = mesh.property(matrixIndex, *v_it);
-				double totalWeight = 0;
-				
-				for (MyMesh::VertexVertexIter vv_it = mesh.vv_iter(*v_it); vv_it.is_valid(); ++vv_it)
-				{
-					MyMesh::HalfedgeHandle _heh = mesh.find_halfedge(*v_it, *vv_it);
-					double w = mesh.property(weight, _heh);
-					if (mesh.is_boundary(*vv_it))
-					{
-						//
-					}
-					else
-					{
-						int j = mesh.property(matrixIndex, *vv_it);
-						A.insert(i, j) = w * W_L;
-						//A(i, j) = w * W_L;
-						totalWeight += w;
-					}
-				}
-				//www -= totalWeight;
-				//std::cout << "www : " << www << std::endl;
-				//A(i, i) = -totalWeight * W_L;
-				A.insert(i, i) = -totalWeight * W_L;
-				//std::cout << "W_H : " << W_H << std::endl;
-				//A(count + i, i) = W_H;
-
-				A.insert(count+i, i) = W_H;
-
-				MyMesh::Point p = mesh.point(*v_it);
-			
-				BX[count+i] = W_H * p[0];
-				BY[count + i] = W_H * p[1];
-				BZ[count + i] = W_H * p[2];
-			}
-		}
-
-		std::cout << "Fill matrix finish!\n" << std::endl;
-
-		std::cout << "Start solve linear system!" << std::endl;
-	//	M.compute(A.transpose()* A);
-		//Eigen::VectorXd X = (A.transpose() * A).ldlt().solve(A.transpose()* BX);
-		//Eigen::VectorXd Y = (A.transpose() * A).ldlt().solve(A.transpose() * BY);
-		//Eigen::VectorXd Z = (A.transpose() * A).ldlt().solve(A.transpose() * BZ);
-		BX = A.transpose() * BX;
-		BY = A.transpose() * BY;
-		BZ = A.transpose() * BZ;
-		A = A.transpose() * A;
-
-		A.makeCompressed();
-		linearSolver.compute(A);
-		Eigen::VectorXd X = linearSolver.solve(BX);
-		Eigen::VectorXd Y = linearSolver.solve(BY);
-		Eigen::VectorXd Z = linearSolver.solve(BZ);
-		//ldlt.compute(A);
-		//Eigen::VectorXd X = (A.transpose() * A).ldlt().solve(A.transpose() * BX);
-		//Eigen::VectorXd Y = (A.transpose() * A).ldlt().solve(A.transpose() * BY);
-		//Eigen::VectorXd Z = (A.transpose() * A).ldlt().solve(A.transpose() * BZ);
-
-		//A.makeCompressed();
-		//std::cout << "A : " << A << std::endl;
-		//linearSolver.compute(A);
-		//std::cout << A << "\n";
-		//Eigen::VectorXd X = linearSolver.solve(BX);
-		//Eigen::VectorXd Y = linearSolver.solve(BY);
-		//Eigen::VectorXd Z = linearSolver.solve(BZ);
-		
-		for (MyMesh::VertexIter v_it = mesh.vertices_begin(); v_it != mesh.vertices_end(); ++v_it)
-		{
-			if (!mesh.is_boundary(*v_it)) {
-				int i = mesh.property(matrixIndex, *v_it);
-				mesh.set_point(*v_it, MyMesh::Point(X[i], Y[i], Z[i]));
-			}
-		}//
-		//if (it == iterNum - 1) {
-		for (MyMesh::VertexIter v_it = model.mesh.vertices_begin(); v_it != model.mesh.vertices_end(); ++v_it)
-		{
-			int i = mesh.property(matrixIndex, *v_it);
-				//std::cout << "Point [" << i <<"] = " << MyMesh::Point(X[i], Y[i], Z[i]) << std::endl;
-
-			if (i >= count || i < 0) {
-				std::cout << "Index out of range!! " << i << std::endl;
-				continue;
-			}
-				//model.mesh.set_point(*v_it, MyMesh::Point(mX[0], mY[0], mZ[0]));
-			model.mesh.set_point(*v_it, MyMesh::Point(X[i], Y[i], Z[i]));
-		}//
-		//}
-		
-		std::cout << "Solve linear system finish11!\n" << std::endl;
-
-		// solve linear system
-	}
-	*/
 }
 
 #pragma endregion
 
 #pragma region Mesh Simplification SSM
-void MeshObject::InitSSM() {
+void MeshObject::InitSSM(std::map<int, bool> _canCollapse) {
 	model.mesh.garbage_collection();
-	skeletonMesh = SkeletonMesh(model);
+	skeletonMesh = SkeletonMesh(model, _canCollapse);
 
 	skeletonMeshs.clear();
 	skeletonMeshs.reserve(101);
 
+
+	this->skeletonMesh.SimplifyMeshSSM(9108);
 	SkeletonMesh tempSkeletonMesh = skeletonMesh;
 	tempSkeletonMesh.LoadToShader();
 	skeletonMeshs.push_back(tempSkeletonMesh);
@@ -1181,7 +963,10 @@ void MeshObject::InitSSM() {
 		// tTemp.Start("Model Simplification Rate " + std::to_string(i) + "% Start");
 		currentTotalEdgeNumber -= edgeToDecreaseForEachLoop;
 		std::cout << "Skeleton Mesh Simplification SSM Rate " + std::to_string(i) + "% Start\n";
-		this->skeletonMesh.SimplifyMeshSSM(currentTotalEdgeNumber);
+		if (i == 99) {
+			this->skeletonMesh.SimplifyMeshSSM(30);
+		}else
+			this->skeletonMesh.SimplifyMeshSSM(currentTotalEdgeNumber);
 		//tTemp.Flag("Model Simplification Rate " + std::to_string(i) + "% Done");
 		std::cout << "Skeleton Mesh Simplification SSM Rate " + std::to_string(i) + "% Done\n\n";
 

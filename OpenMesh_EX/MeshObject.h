@@ -107,8 +107,8 @@ private:
 #pragma region Skeleton Extraction
 	MyMesh mesh;
 	double initPara = 0;
-	double power = 7.0;
-	double SL = 2.5;
+	double power = 0.02;
+	double SL = 5;
 	double W_L = 0;
 	double W_H = 1.0;
 	double totalArea = 0;
@@ -119,7 +119,7 @@ private:
 	OpenMesh::VPropHandleT<double> or_area;
 	OpenMesh::VPropHandleT<int> matrixIndex;
 	OpenMesh::VPropHandleT<int> outAreaIndex;
-
+	std::map<int, bool> _canCollapse;
 #pragma endregion
 
 
@@ -159,7 +159,7 @@ private:
 
 #pragma region Mesh Simplification SSM
 	// called the skeleton mesh initSSM
-	void InitSSM();
+	void InitSSM(std::map<int, bool> _canCollapse);
 
 	// the ssm part of skeleton mesh
 	SkeletonMesh skeletonMesh;

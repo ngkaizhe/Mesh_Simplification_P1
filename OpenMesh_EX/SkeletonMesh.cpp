@@ -4,11 +4,11 @@ SkeletonMesh::SkeletonMesh() {
 	// do nothing
 }
 
-SkeletonMesh::SkeletonMesh(GLMesh model) {
+SkeletonMesh::SkeletonMesh(GLMesh model, std::map<int, bool>& _canCollapse) {
 	// reserve the size first so our vector wont change its container size
 	this->vertices.reserve(model.mesh.n_vertices());
 	this->edges.reserve(model.mesh.n_edges());
-
+	this->_sk_canCollapse = _canCollapse;
 	isSamplingCostInit = true;
 	// init ssm value
 	this->InitSSM(model);
@@ -236,12 +236,22 @@ void SkeletonMesh::SimplifyMeshSSM(int edgesToLeft) {
 
 // helper function for finding the lowest cost to collapse
 void SkeletonMesh::CalculateEdgeIDToBeCollapsed() {
+	this->edgeIDToBeCollapsed = -1;
 	double currentLowestCost;
 	bool isFirst = true;
 
 	for (int i = 0; i < edges.size(); i++) {
 		// we dont consider the edge that was deleted
 		if (edges[i]._isDeleted) continue;
+
+		int i_id = edges[i]._i->_idx;
+		int j_id = edges[i]._j->_idx;
+
+		if (!_sk_canCollapse[i_id] && !_sk_canCollapse[j_id]) {
+			//edges[i]._isDeleted = true;
+			//std::cout << "Out of Index : " << i_id << " and " << j_id << "\n";
+			continue;
+		}
 
 		double minCost = std::min(edges[i].costIToJ, edges[i].costJToI);
 		if (isFirst) {
@@ -254,6 +264,9 @@ void SkeletonMesh::CalculateEdgeIDToBeCollapsed() {
 			currentLowestCost = minCost;
 		}
 	}
+
+	if (this->edgeIDToBeCollapsed == -1)
+		std::cout << "Dead Lock\n";
 }
 
 //helper function for calculating shape cost and sampling cost

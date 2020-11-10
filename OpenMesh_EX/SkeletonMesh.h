@@ -75,7 +75,7 @@ class SkeletonMesh
 {
 public:
 	SkeletonMesh();
-	SkeletonMesh(GLMesh mesh);
+	SkeletonMesh(GLMesh mesh, std::map<int, bool>& _canCollapse);
 
 	// render the line (currently)
 	void Render(Shader shader);
@@ -103,6 +103,7 @@ private:
 	std::vector<Vertex> vertices;
 	std::vector<Edge> edges;
 
+	std::map<int, bool> _sk_canCollapse;
 	// the edge id to get collapse next
 	int edgeIDToBeCollapsed = -1;
 
