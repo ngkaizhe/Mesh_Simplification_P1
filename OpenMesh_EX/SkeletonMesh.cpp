@@ -244,14 +244,14 @@ void SkeletonMesh::CalculateEdgeIDToBeCollapsed() {
 		// we dont consider the edge that was deleted
 		if (edges[i]._isDeleted) continue;
 
-		int i_id = edges[i]._i->_idx;
+		/*int i_id = edges[i]._i->_idx;
 		int j_id = edges[i]._j->_idx;
 
 		if (!_sk_canCollapse[i_id] && !_sk_canCollapse[j_id]) {
 			//edges[i]._isDeleted = true;
 			//std::cout << "Out of Index : " << i_id << " and " << j_id << "\n";
 			continue;
-		}
+		}*/
 
 		double minCost = std::min(edges[i].costIToJ, edges[i].costJToI);
 		if (isFirst) {

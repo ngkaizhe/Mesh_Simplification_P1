@@ -37,7 +37,7 @@ bool MeshObject::Init(std::string fileName)
 	//models.push_back(model);
 	// start to initial the parameterization
 	for (int i = 0; i < 6; i++) {
-		this->InitSE(89);
+		this->InitSE(90);
 	}
 	// start to initial the ssm model
 	this->InitSSM(_canCollapse);
@@ -208,7 +208,7 @@ void MeshObject::InitQEM() {
 
 	// sort the heap
 	this->RearrangeHeap();
-	std::cout << "Init finish arrange heap\n";
+	//std::cout << "Init finish arrange heap\n";
 	tGlobal.Flag();
 
 	CollapseRecalculated = false;
@@ -235,10 +235,10 @@ void MeshObject::InitQEM() {
 		// MyTimer tTemp;
 		// for each rate we wish to decrease the original model
 		// tTemp.Start("Model Simplification Rate " + std::to_string(i) + "% Start");
-		std::cout << "Model Simplification QEM Rate " + std::to_string(i) + "% Start\n";
+		//std::cout << "Model Simplification QEM Rate " + std::to_string(i) + "% Start\n";
 		this->SimplifyMeshQEM(this->GetUndeletedFacesNumber() - (faceDiff / 100), i);
 		//tTemp.Flag("Model Simplification Rate " + std::to_string(i) + "% Done");
-		std::cout << "Model Simplification QEM Rate " + std::to_string(i) + "% Done\n\n";
+		//std::cout << "Model Simplification QEM Rate " + std::to_string(i) + "% Done\n\n";
 
 		// save the final state
 		GLMesh tModel = model;
@@ -247,7 +247,7 @@ void MeshObject::InitQEM() {
 		models.push_back(tModel);
 	}
 
-	tGlobal.Flag("Simplify all model finish!");
+	//tGlobal.Flag("Simplify all model finish!");
 
 	this->currentQEMIDToRender = -1;
 	this->SetQEMRate(0);
@@ -697,7 +697,7 @@ double MeshObject::GetOneRingArea(MyMesh& mesh, MyMesh::VertexIter& v_it) {
 
 void MeshObject::Parameterization()
 {
-	std::cout << "Parameterization" << std::endl;
+	//std::cout << "Parameterization" << std::endl;
 	/* Best Case
 	iterNum = 2
 	power = 7.0f
@@ -725,9 +725,9 @@ void MeshObject::Parameterization()
 	}
 	//MyMesh mesh = model.mesh;
 
-	std::cout << "IterNum : " << iterNum << std::endl;
+//	std::cout << "IterNum : " << iterNum << std::endl;
 
-	std::cout << "Start calculate weight!" << std::endl;
+//	std::cout << "Start calculate weight!" << std::endl;
 	//calculate weight
 	MyMesh::HalfedgeHandle heh;
 	for (MyMesh::EdgeIter e_it = mesh.edges_begin(); e_it != mesh.edges_end(); ++e_it)
@@ -768,9 +768,9 @@ void MeshObject::Parameterization()
 			mesh.property(weight, mesh.opposite_halfedge_handle(_heh)) = 0;
 		}
 	}
-	std::cout << "Calculate weight finish!\n" << std::endl;
+//	std::cout << "Calculate weight finish!\n" << std::endl;
 
-	std::cout << "Start calculate matrix size!" << std::endl;
+//	std::cout << "Start calculate matrix size!" << std::endl;
 
 	int fn = 0;
 	// calculate matrix size
@@ -818,12 +818,12 @@ void MeshObject::Parameterization()
 	}
 	else
 		W_L = SL * W_L;
-	std::cout << "W_L : " << W_L << std::endl;
+//	std::cout << "W_L : " << W_L << std::endl;
 
 //	std::cout << "Matrix size is " << count << std::endl;
-	std::cout << "Calculate matrix size finish!\n" << std::endl;
+//	std::cout << "Calculate matrix size finish!\n" << std::endl;
 
-	std::cout << "Start fill matrix!" << std::endl;
+//	std::cout << "Start fill matrix!" << std::endl;
 
 	Eigen::SparseMatrix<double> A(2 * count, count);
 
@@ -889,11 +889,11 @@ void MeshObject::Parameterization()
 			BZ[count + i] = W_H * p[2];
 		}
 	}
-	std::cout << "W_H : " << W_H << std::endl;
+//	std::cout << "W_H : " << W_H << std::endl;
 
-	std::cout << "Fill matrix finish!\n" << std::endl;
+//	std::cout << "Fill matrix finish!\n" << std::endl;
 
-	std::cout << "Start solve linear system!" << std::endl;
+//	std::cout << "Start solve linear system!" << std::endl;
 
 	BX = A.transpose() * BX;
 	BY = A.transpose() * BY;
@@ -932,7 +932,7 @@ void MeshObject::Parameterization()
 		model.mesh.set_point(*v_it, MyMesh::Point(X[i], Y[i], Z[i]));
 	}
 
-	std::cout << "Solve linear system finish11!\n" << std::endl;
+	//std::cout << "Solve linear system finish11!\n" << std::endl;
 	iterNum++;
 	// solve linear system
 }
@@ -948,7 +948,7 @@ void MeshObject::InitSSM(std::map<int, bool> _canCollapse) {
 	skeletonMeshs.reserve(101);
 
 
-	this->skeletonMesh.SimplifyMeshSSM(9108);
+	//this->skeletonMesh.SimplifyMeshSSM(9108);
 	SkeletonMesh tempSkeletonMesh = skeletonMesh;
 	tempSkeletonMesh.LoadToShader();
 	skeletonMeshs.push_back(tempSkeletonMesh);
@@ -962,13 +962,13 @@ void MeshObject::InitSSM(std::map<int, bool> _canCollapse) {
 		// MyTimer tTemp;
 		// tTemp.Start("Model Simplification Rate " + std::to_string(i) + "% Start");
 		currentTotalEdgeNumber -= edgeToDecreaseForEachLoop;
-		std::cout << "Skeleton Mesh Simplification SSM Rate " + std::to_string(i) + "% Start\n";
+		//std::cout << "Skeleton Mesh Simplification SSM Rate " + std::to_string(i) + "% Start\n";
 		if (i == 99) {
-			this->skeletonMesh.SimplifyMeshSSM(30);
+			this->skeletonMesh.SimplifyMeshSSM(30); //§ï³oÃä
 		}else
 			this->skeletonMesh.SimplifyMeshSSM(currentTotalEdgeNumber);
 		//tTemp.Flag("Model Simplification Rate " + std::to_string(i) + "% Done");
-		std::cout << "Skeleton Mesh Simplification SSM Rate " + std::to_string(i) + "% Done\n\n";
+		//std::cout << "Skeleton Mesh Simplification SSM Rate " + std::to_string(i) + "% Done\n\n";
 
 		// save the final state
 		SkeletonMesh tempSkeletonMesh = skeletonMesh;
